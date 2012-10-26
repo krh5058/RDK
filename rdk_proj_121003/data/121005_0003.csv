@@ -1,0 +1,4 @@
+Subject,Trial,LeftPattern,RightPattern,Response,RT
+0003,1,linear_constant-0.8-0.72,linear_constant-0.8-0,NA,NA
+0003,2,linear_constant-0.8-0.64,linear_constant-0.8-0,1,2.7815
+0003,3,linear_constant-0.8-0.48,linear_constant-0.8-0,1,0.4849

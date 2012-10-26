@@ -1,0 +1,28 @@
+function [ r, t ] = rect2polar( varargin )
+% rect2polar -- converts rectangular coords to polar
+% [ r, t ] = rect2polar( x, y )
+
+
+if nargin < 2
+    if nargin < 1
+        disp( sprintf('[%s]: x, y coords not specified.', mfilename) );
+        return;
+    end
+    xy = varargin{1};
+    x = xy(:,1); y = xy(:,2);
+end
+
+r = sqrt( x.^2 + y.^2 );
+t = atan2( y, x );
+
+if nargin == 2 
+    % x, y mode
+    varargout{1} = r;
+    varargout{2} = t;
+elseif nargin == 1
+    % xy mode
+else
+    error('rect2polar requires 1 or 2 inputs.');
+end
+
+return

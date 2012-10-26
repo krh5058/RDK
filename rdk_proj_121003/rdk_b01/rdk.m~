@@ -1,0 +1,111 @@
+function params = rdk( varargin )
+% rdk -- Random Dot Kinematogram display program
+%
+% rdk( [,param_fn] [,verbose])
+%   param_fn : string indicating filename for saved parameter struct stored
+%   in "params" folder
+%       -Ex: rdk('rdk_new.mat')
+%   Include 'verbose' if you require extended output:
+%       -Ex: rdk('verbose')
+%       -Ex: rdk('rdk_new.mat','verbose')
+
+%----   History
+% 120727    krh reorganized frontend.  Removed control.debug
+% 0812xx    rog modified from DotDem_rog to make more modular
+% 081213    rog modified to use high-level data structure
+% 081230    rog modified documentation. Built facility to allow default
+%           params.
+
+% control.debug = 1;
+% control.verbose = 1;
+%param_fn = 'rdk_defaults.mat';
+
+%----   Input check
+error(nargchk(0,2,nargin)); % 0 to 2 inputs only
+
+PsychJavaTrouble;
+rand('state',sum(clock*100));
+randn('state',sum(clock*100));
+
+% Directory of this script
+file_str = mfilename('fullpath');
+[file_dir,~,~] = fileparts(file_str);
+file_dir = fileparts(file_dir);
+
+if nargin >= 1
+    verb_in = cellfun(@(y)(~isempty(y)),regexp(varargin,'[Vv]erbose'));
+    if ~verb_in % Check for verbose 
+        param_in = 1; % Consider varargin{1} to be param_fn
+        control.verbose = 0;
+    else
+        control.verbose = 1;
+        fprintf('[%s]: Verbose on. \n', mfilename);
+        if any(~verb_in) % Check for anything but verbose
+            param_in = find(~verb_in);
+        else
+            intext = ' No input file specified. ';
+            param_in = 0; % No parameter input
+        end
+    end
+else % No input
+    param_in = 0; % No parameter input
+    control.verbose = 0; % No verbose
+    intext = ' No input file specified. ';
+end % End if: nargin >= 1
+
+%---- Search param file
+if param_in 
+    param_fn = varargin{param_in};
+    if ispc % OS check
+        [~,param_find] = system(['dir /b/s ' file_dir filesep 'params' filesep param_fn ]);
+        if strcmp(param_find(1:end-1),'File Not Found')
+            fprintf('[%s]: Parameter file %s not found in params folder. \n', mfilename, param_fn );
+            if ~strcmp(input('Generate new parameter file (y/n)?','s'),'y')
+                fprintf('[%s]: Aborting. \n', mfilename);
+                return;
+            else
+                intext = ' ';
+            end
+        end
+    elseif ismac
+        % ***Add mac later***
+    end
+    % Load parameters
+    try
+        load(param_find(1:end-1));
+        fprintf('[%s]: Parameter file %s loaded. \n', mfilename, param_fn );
+    catch loadException
+    end
+end
+
+if ~exist('params','var') % Check if params file exists
+    param_fn = ['rdk_' datestr(now,30) '.mat']; % New parameter string
+    fprintf('[%s]:%sGenerating new parameter file: %s. \n', mfilename, intext, param_fn);
+    
+    %----   Get user parameters and compute dependent parameters
+    params = rdkGetSetParams_beta( param_fn, control );
+    
+    % Save param file
+    if control.verbose
+        fprintf('[%s]: Saving parameter file as %s.', mfilename, param_fn );
+    end
+    save( [file_dir filesep 'params' filesep param_fn], 'params' );
+    
+end
+
+%----   Generate stimuli
+params.exp = rdkGenerateStimuli( params );
+
+%----   Show stimuli
+if ispc
+    ShowHideWinTaskbarMex(0)
+end
+
+params = rdkShowStimuli( params );
+
+if ispc
+    ShowHideWinTaskbarMex(1)
+end
+
+return;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
