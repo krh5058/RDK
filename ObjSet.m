@@ -94,6 +94,7 @@ classdef ObjSet < handle
         end
         
         function exp = ExpSet(sys)
+            
             % General Experimental Parameters
             exp.block = 5; % Number of blocks
             exp.trial_t = 10; % Trial duration (sec)
@@ -107,7 +108,10 @@ classdef ObjSet < handle
             % Mask Constraint Parameters
             exp.mask.annulus_deg = [5 10]; % Annulus radius minimum and maximum (deg)
             exp.mask.annulus_pix = exp.mask.annulus_deg * sys.display.ppd; % Annulus radius minimum and maximum (pix)
-            
+            outerA = pi*exp.mask.annulus_pix(2)^2;
+            innerA = pi*exp.mask.annulus_pix(1)^2;
+            exp.mask.area = outerA - innerA; % Total area (pixels)
+                
             % Fixation Parameters
             exp.fix = 1; % Fixation on or off (0/1)
             exp.fix.size = .15; % Fixation size in degrees
@@ -115,25 +119,34 @@ classdef ObjSet < handle
             
             % Dot Parameters
             exp.dot.dens = .1; % Dot density fraction
-            exp.dot.size = .1167; % Dot size
-            exp.dot.field = [(sys.display.center(1) - exp.mask.annulus_pix(2)) (sys.display.center(2) + exp.mask.annulus_pix(2)) (sys.display.center(1) + exp.mask.annulus_pix(2)) (sys.display.center(2) - exp.mask.annulus_pix(2)) ]; % Dot field (pix)
-                        
+            exp.dot.size_deg = .1167; % Dot size (deg)
+            exp.dot.size_pix = round(exp.dot.size_deg * sys.display.ppd); % Dot size (pix)
+            exp.dot.n = round( exp.dot.dens/(exp.dot.size_pix^2) * exp.mask.area ); % Number of dots
+            exp.dot.field = [(sys.display.center(1) - exp.mask.annulus_pix(2)) (sys.display.center(2) - exp.mask.annulus_pix(2)) (sys.display.center(1) + exp.mask.annulus_pix(2)) (sys.display.center(2) + exp.mask.annulus_pix(2)) ]; % Dot field (pix)
+            exp.dot.init = zeros([exp.dot.n 2]); % Pre-allocate dot array
+            exp.dot.init(:,1) = rand([exp.dot.n 1])*(exp.dot.field(3)-exp.dot.field(1)) + ones([exp.dot.n 1])*exp.dot.field(1); % X coordinates (pix)
+            exp.dot.init(:,2) = rand([exp.dot.n 1])*(exp.dot.field(4)-exp.dot.field(2)) + ones([exp.dot.n 1])*exp.dot.field(2); % Y coordinates (pix)
+            
             % Pattern Parameters
             for p = 1:length(exp.pattern);
-                
-                switch exp.pattern{p}
-                    
-                    case 'linear'
+                switch exp.pattern{p} 
+                    case 'linear' % Linear function handles
                         exp.(exp.pattern{p}).dir_rads = pi/2; % Horizontal
-%                         function motion(obj,dotarray)
-%                             v = [cos(exp.(exp.pattern{p}).dir_rads) sin(exp.(exp.pattern{p}).dir_rads)] * exp.ppf;
-%                             
-%                         end
-                    case 'radial'
-                        
+                        lin1 = @(rad,ppf)([cos(rad) sin(rad)]*ppf); % Motion vector (exp.linear.dir_rads,exp.ppf)
+                        lin2 = @(mot,dot,dir)(dot + (repmat(mot, [length(dot) 1]) .* [repmat(dir, [length(dot) 1]) repmat(dir, [length(dot) 1])])); % New dot vector (output from lin1, dot vector, 1/-1)
+                        exp.(exp.pattern{p}).linear_fun = {lin1, lin2};
+                    case 'radial' % Radial function handles
+                        rad1 = @(dot)(atan2(dot(:,2),dot(:,1))); % Calculate theta (Dot array)
+                        rad2 = @(theta,ppf,dir)([cos(theta) sin(theta)] .* repmat(ppf*dir,[length(theta) 2])); % Cos-Sin vector of theta values times motion matrix (output from rad1, exp.ppf, 1/-1)
+                        rad3 = @(dot,mot)(dot + mot); % New dot vector
+                        exp.(exp.pattern{p}).radial_fun = {rad1, rad2, rad3};
                 end
-                     
             end
+            
+            % Random function handles
+            rand1 = @(dot)(rand(length(dot), 1)*2*pi); % Random direction (Dot array)
+            rand2 = @(dot,ppf,dt)(dot + (repmat(ppf,[length(dot) 2]) .* [cos(dt) sin(dt)])); % New dots created by adding random direction vector (Dot array, exp.ppf, output from rand1)
+            exp.random_fun = {rand1, rand2};
             
         end
     end
