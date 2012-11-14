@@ -126,6 +126,7 @@ classdef ObjSet < handle
             exp.dot.init = zeros([exp.dot.n 2]); % Pre-allocate dot array
             exp.dot.init(:,1) = rand([exp.dot.n 1])*(exp.dot.field(3)-exp.dot.field(1)) + ones([exp.dot.n 1])*exp.dot.field(1); % X coordinates (pix)
             exp.dot.init(:,2) = rand([exp.dot.n 1])*(exp.dot.field(4)-exp.dot.field(2)) + ones([exp.dot.n 1])*exp.dot.field(2); % Y coordinates (pix)
+            exp.dot.init = single(exp.dot.init); % Convert to single precision
             
             % Pattern Parameters
             for p = 1:length(exp.pattern);
