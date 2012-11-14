@@ -58,7 +58,7 @@ classdef ObjSet < handle
             sys.javmem.total = java.lang.Runtime.getRuntime.totalMemory;
             
             % Buffer size
-            sys.buffer = 10E6; % Buffer remained free (bytes)
+            sys.buffer = 3*1024*1024*1024; % Buffer size (bytes): 3GB -- Guideline from MathWorks for 32-bit
             
             % Display Settings
             sys.display.screens = Screen('Screens'); % Screens available
