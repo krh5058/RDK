@@ -1,15 +1,48 @@
 classdef ObjSet < handle
     %
     properties (SetObservable) 
-
+        sys % System settings
+        exp % Experimental parameter settings
+        trial_n = 1; % Trial counter
+        t % Timer object
     end
     
     methods
         
-        function obj = ObjSet
-            
+        function obj = ObjSet(sys,exp)
+            obj.sys = sys;
+            obj.exp = exp;
         end
         
+        function dot = DotGen(obj)
+            
+            if obj.trial_n <= obj.exp.trial_n % Fail-safe
+                dot = zeros([obj.exp.dot.n 2]); % Pre-allocate dot array
+                dot(:,1) = rand([obj.exp.dot.n 1])*(obj.exp.dot.field(3)-obj.exp.dot.field(1)) + ones([obj.exp.dot.n 1])*obj.exp.dot.field(1); % X coordinates (pix)
+                dot(:,2) = rand([obj.exp.dot.n 1])*(obj.exp.dot.field(4)-obj.exp.dot.field(2)) + ones([obj.exp.dot.n 1])*obj.exp.dot.field(2); % Y coordinates (pix)
+                dot = single(dot); % Convert to single precision
+                
+                pattern = obj.exp.pattern{randi([1 length(obj.exp.pattern)])}; % Randomly generate pattern type
+                while obj.exp.(pattern).count > length(obj.exp.(pattern).coh) % Check if count has been reached for this pattern
+                    pattern = obj.exp.pattern{randi([1 length(obj.exp.pattern)])}; % Randomly generate pattern type
+                end % End while
+                parfor i = 1:1+obj.sys.display.dual
+                    for ii = 1:obj.exp.fr
+                        dotindex = obj.exp.dot.parse(dot,obj.exp.(pattern).coh(obj.exp.(pattern).count,i));
+                        for iii = 1:length(obj.exp.(pattern).([pattern '_fun']))
+                            
+                        end
+                        for jjj = 1:length(obj.exp.random_fun)
+                            
+                        end
+                    end
+                end
+                
+                obj.exp.(pattern).count = obj.exp.(pattern).count + 1; % Add to pattern count
+                obj.trial_n = obj.trial_n + 1; % Add to trial count
+            end
+            
+        end
     end
     
     methods (Static)
@@ -40,6 +73,9 @@ classdef ObjSet < handle
             
             % Buffer size
             sys.buffer = 3*1024*1024*1024; % Buffer size (bytes): 3GB -- Guideline from MathWorks for 32-bit
+            
+            % Opening multiple labs (default is equal to number of cores
+            matlabpool;
             
             % Display Settings
             sys.display.screens = Screen('Screens'); % Screens available
@@ -79,6 +115,7 @@ classdef ObjSet < handle
             % General Experimental Parameters
             exp.block = 5; % Number of blocks
             exp.trial_t = 10; % Trial duration (sec)
+            exp.fr = sys.display.fps*exp.trial_t; % Frames total
             exp.reverse = 1; % Reverse sides
             exp.pattern = {'radial','linear'}; % Pattern conditions
             exp.coherence = [.05 .1 .15 .2]; % Coherence conditions
@@ -109,15 +146,12 @@ classdef ObjSet < handle
             exp.dot.size_pix = round(exp.dot.size_deg * sys.display.ppd); % Dot size (pix)
             exp.dot.n = round( exp.dot.dens/(exp.dot.size_pix^2) * exp.mask.area ); % Number of dots
             exp.dot.field = [(sys.display.center(1) - exp.mask.annulus_pix(2)) (sys.display.center(2) - exp.mask.annulus_pix(2)) (sys.display.center(1) + exp.mask.annulus_pix(2)) (sys.display.center(2) + exp.mask.annulus_pix(2)) ]; % Dot field (pix)
-            exp.dot.init = zeros([exp.dot.n 2]); % Pre-allocate dot array
-            exp.dot.init(:,1) = rand([exp.dot.n 1])*(exp.dot.field(3)-exp.dot.field(1)) + ones([exp.dot.n 1])*exp.dot.field(1); % X coordinates (pix)
-            exp.dot.init(:,2) = rand([exp.dot.n 1])*(exp.dot.field(4)-exp.dot.field(2)) + ones([exp.dot.n 1])*exp.dot.field(2); % Y coordinates (pix)
-            exp.dot.init = single(exp.dot.init); % Convert to single precision
             
             % Pattern Parameters
             for p = 1:length(exp.pattern);
                 [pres_shuffle1,shufflesort] = Shuffle(pres(:,1)); % Shuffle first column of pres
-                exp.(exp.pattern{p}).pres = [pres_shuffle1 pres(shufflesort,2)]; % Reconstruct with sorted second column -- apply to pattern structure
+                exp.(exp.pattern{p}).coh = [pres_shuffle1 pres(shufflesort,2)]; % Reconstruct with sorted second column -- apply to pattern structure
+                exp.(exp.pattern{p}).count = 1; % Initialize count
                 switch exp.pattern{p} 
                     case 'linear' % Linear function handles
                         exp.(exp.pattern{p}).dir_rads = pi/2; % Horizontal
@@ -127,26 +161,30 @@ classdef ObjSet < handle
                     case 'radial' % Radial function handles
                         rad1 = @(dot)(atan2(dot(:,2),dot(:,1))); % Calculate theta (Dot array)
                         rad2 = @(theta,ppf,dir)([cos(theta) sin(theta)] .* repmat(ppf*dir,[length(theta) 2])); % Cos-Sin vector of theta values times motion matrix (output from rad1, exp.ppf, 1/-1)
-                        rad3 = @(dot,mot)(dot + mot); % New dot vector
+                        rad3 = @(mot,dot)(dot + mot); % New dot vector (motion vector, dot array)
                         exp.(exp.pattern{p}).radial_fun = {rad1, rad2, rad3};
                 end
             end
             
             % Random function handles
             rand1 = @(dot)(rand(length(dot), 1)*2*pi); % Random direction (Dot array)
-            rand2 = @(dot,ppf,dt)(dot + (repmat(ppf,[length(dot) 2]) .* [cos(dt) sin(dt)])); % New dots created by adding random direction vector (Dot array, exp.ppf, output from rand1)
+            rand2 = @(dot,ppf,mot)(dot + (repmat(ppf,[length(dot) 2]) .* [cos(mot) sin(mot)])); % New dots created by adding random direction vector (Dot array, exp.ppf, output from rand1)
             exp.random_fun = {rand1, rand2};
+            
+            % Variable nomenclature
+            exp.nomen = {'rad','obj.exp.(pattern).dir_rads';'ppf','obj.exp.ppf'};
             
             % Dot parse function handle
             exp.dot.parse = @(dot,coh)(rand(size(dot(:,1))) < coh); % Variable each call
             
             % Presentation function handles
-            exp.selectstero_fun = @(w,stereo)(Screen('SelectStereoDrawBuffer', w, stereo));
-            exp.fix_fun = @(w,fix)(Screen('FillOval',w,fix.color,fix.coord));
-            exp.draw_fun = @(dot,w)(Screen('DrawDots',w,double(dot)));
-            exp.flip_fun = @(w)(Screen('Flip',w));
-            
+            exp.selectstero_fun = @(w,stereo)(Screen('SelectStereoDrawBuffer', w, stereo)); % Select stereo buffer to draw
+            exp.fix_fun = @(w,fix)(Screen('FillOval',w,fix.color,fix.coord)); % Draw fixation
+            exp.draw_fun = @(dot,w)(Screen('DrawDots',w,double(dot))); % Draw dots 
+            exp.flip_fun = @(w)(Screen('Flip',w)); % Flip buffer
         end
+        
+        
     end
     
 end
