@@ -85,9 +85,11 @@ classdef ObjSet < handle
             exp.v = 2; % Dot speed (deg/sec)
             exp.ppf  = exp.v * sys.display.ppd / sys.display.fps; % Dot speed (pix/frame)
             exp.trial_n = length(exp.pattern) * length(exp.coherence) * (2*exp.reverse); % Number of trials per block
-            exp.pres = [zeros([length(exp.coherence) 1]) exp.coherence'];
-            exp.pres_rev = [exp.pres; [exp.pres(:,2) exp.pres(:,1)]];
-            
+            pres = [zeros([length(exp.coherence) 1]) exp.coherence']; % Constructing presentation matrix
+            if exp.reverse
+                pres = [pres; [pres(:,2) pres(:,1)]];  % Include reversed eyes
+            end
+
             % Mask Constraint Parameters
             exp.mask.annulus_deg = [5 10]; % Annulus radius minimum and maximum (deg)
             exp.mask.annulus_pix = exp.mask.annulus_deg * sys.display.ppd; % Annulus radius minimum and maximum (pix)
@@ -99,6 +101,7 @@ classdef ObjSet < handle
             exp.fix = 1; % Fixation on or off (0/1)
             exp.fix.size = .15; % Fixation size in degrees
             exp.fix.color = sys.display.white; % Fixation color (default white)
+            exp.fix.coord = sys.display.center; % Fixation coordinates (center)
             
             % Dot Parameters
             exp.dot.dens = .1; % Dot density fraction
@@ -113,6 +116,8 @@ classdef ObjSet < handle
             
             % Pattern Parameters
             for p = 1:length(exp.pattern);
+                [pres_shuffle1,shufflesort] = Shuffle(pres(:,1)); % Shuffle first column of pres
+                exp.(exp.pattern{p}).pres = [pres_shuffle1 pres(shufflesort,2)]; % Reconstruct with sorted second column -- apply to pattern structure
                 switch exp.pattern{p} 
                     case 'linear' % Linear function handles
                         exp.(exp.pattern{p}).dir_rads = pi/2; % Horizontal
@@ -135,9 +140,11 @@ classdef ObjSet < handle
             % Dot parse function handle
             exp.dot.parse = @(dot,coh)(rand(size(dot(:,1))) < coh); % Variable each call
             
-            % Dot draw function handle
+            % Presentation function handles
+            exp.selectstero_fun = @(w,stereo)(Screen('SelectStereoDrawBuffer', w, stereo));
+            exp.fix_fun = @(w,fix)(Screen('FillOval',w,fix.color,fix.coord));
             exp.draw_fun = @(dot,w)(Screen('DrawDots',w,double(dot)));
-            exp.flip = @(w)(Screen('Flip',w));
+            exp.flip_fun = @(w)(Screen('Flip',w));
             
         end
     end
