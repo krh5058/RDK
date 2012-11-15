@@ -1,26 +1,7 @@
 classdef ObjSet < handle
     %
     properties (SetObservable) 
-        % SysCheck
-        core
-        io_device
-        mem
-        javmem
-        buffersize
-        display
-        
-        % ExpSet
-        block
-        trial
-        trial_dur
-        reverse_flag
-        cond_n
-        cond_v
-        dot_speed
-        subjID
-        outFormat
-        dot
-        fix
+
     end
     
     methods
@@ -104,6 +85,8 @@ classdef ObjSet < handle
             exp.v = 2; % Dot speed (deg/sec)
             exp.ppf  = exp.v * sys.display.ppd / sys.display.fps; % Dot speed (pix/frame)
             exp.trial_n = length(exp.pattern) * length(exp.coherence) * (2*exp.reverse); % Number of trials per block
+            exp.pres = [zeros([length(exp.coherence) 1]) exp.coherence'];
+            exp.pres_rev = [exp.pres; [exp.pres(:,2) exp.pres(:,1)]];
             
             % Mask Constraint Parameters
             exp.mask.annulus_deg = [5 10]; % Annulus radius minimum and maximum (deg)
@@ -119,7 +102,7 @@ classdef ObjSet < handle
             
             % Dot Parameters
             exp.dot.dens = .1; % Dot density fraction
-            exp.dot.size_deg = .1167; % Dot size (deg)
+            exp.dot.size_deg = .1; % Dot size (deg)
             exp.dot.size_pix = round(exp.dot.size_deg * sys.display.ppd); % Dot size (pix)
             exp.dot.n = round( exp.dot.dens/(exp.dot.size_pix^2) * exp.mask.area ); % Number of dots
             exp.dot.field = [(sys.display.center(1) - exp.mask.annulus_pix(2)) (sys.display.center(2) - exp.mask.annulus_pix(2)) (sys.display.center(1) + exp.mask.annulus_pix(2)) (sys.display.center(2) + exp.mask.annulus_pix(2)) ]; % Dot field (pix)
@@ -148,6 +131,13 @@ classdef ObjSet < handle
             rand1 = @(dot)(rand(length(dot), 1)*2*pi); % Random direction (Dot array)
             rand2 = @(dot,ppf,dt)(dot + (repmat(ppf,[length(dot) 2]) .* [cos(dt) sin(dt)])); % New dots created by adding random direction vector (Dot array, exp.ppf, output from rand1)
             exp.random_fun = {rand1, rand2};
+            
+            % Dot parse function handle
+            exp.dot.parse = @(dot,coh)(rand(size(dot(:,1))) < coh); % Variable each call
+            
+            % Dot draw function handle
+            exp.draw_fun = @(dot,w)(Screen('DrawDots',w,double(dot)));
+            exp.flip = @(w)(Screen('Flip',w));
             
         end
     end
