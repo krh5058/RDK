@@ -14,10 +14,10 @@ classdef ObjSet < handle
             obj.exp = exp;
         end
         
-        function dot = DotGen(obj)
+        function dot = DotGen(obj) % DotGen method
             
             if obj.trial_n <= obj.exp.trial_n % Fail-safe
-                dot = zeros([obj.exp.dot.n 2]); % Pre-allocate dot array
+                dot = zeros([obj.exp.dot.n 2]); % Pre-allocate dot array for new generation
                 dot(:,1) = rand([obj.exp.dot.n 1])*(obj.exp.dot.field(3)-obj.exp.dot.field(1)) + ones([obj.exp.dot.n 1])*obj.exp.dot.field(1); % X coordinates (pix)
                 dot(:,2) = rand([obj.exp.dot.n 1])*(obj.exp.dot.field(4)-obj.exp.dot.field(2)) + ones([obj.exp.dot.n 1])*obj.exp.dot.field(2); % Y coordinates (pix)
                 dot = single(dot); % Convert to single precision
@@ -26,15 +26,44 @@ classdef ObjSet < handle
                 while obj.exp.(pattern).count > length(obj.exp.(pattern).coh) % Check if count has been reached for this pattern
                     pattern = obj.exp.pattern{randi([1 length(obj.exp.pattern)])}; % Randomly generate pattern type
                 end % End while
-                parfor i = 1:1+obj.sys.display.dual
-                    for ii = 1:obj.exp.fr
-                        dotindex = obj.exp.dot.parse(dot,obj.exp.(pattern).coh(obj.exp.(pattern).count,i));
-                        for iii = 1:length(obj.exp.(pattern).([pattern '_fun']))
-                            
+                
+                dir = 1;
+                
+                for i = 1:1+obj.sys.display.dual % For each stereo display
+                    for ii = 1:obj.exp.fr % For each frame 
+                        dotindex = obj.exp.dot.parse(dot,obj.exp.(pattern).coh(obj.exp.(pattern).count,i)); % Use dot.parse to obtain an index of coherently-selected dots
+                        dot_parsed = dot(dotindex,:); % Dot array using index
+                        for iii = 1:length(obj.exp.(pattern).([pattern '_fun'])) 
+                            f = functions(obj.exp.(pattern).([pattern '_fun']){iii,1}); % Obtain function handle
+                            arglist = regexp(f.function,'[@]{1,1}[(]{1,1}(.*)[)]{1,1}[(]{1,1}','tokens'); 
+                            arglist = regexp(arglist{1}{1},'[,]','split'); % Obtain arglist
+                            argstr = []; % Preallocate argument string
+                            for iiii = 1:length(arglist) % For each argument
+                                arglist{iiii} = obj.exp.nomen{strcmp(arglist{iiii},obj.exp.nomen(:,1)),2}; % Rename arglist
+                                argstr = [argstr ',' arglist{iiii}]; % Construct argstr
+                            end
+                            eval([obj.exp.(pattern).([pattern '_fun']){iii,2} ' = obj.exp.(pattern).([pattern ''_fun'']){iii,1}(' argstr(2:end) ');']); % Evaluate function handle with argstr
                         end
-                        for jjj = 1:length(obj.exp.random_fun)
-                            
+                        cohdot = newdot; % Coherent dot array
+                        dot_parsed = dot(~dotindex,:); % Dot array of previously unselected dots
+                        for jjj = 1:length(obj.exp.random_fun) % For each function handle
+                            f = functions(obj.exp.random_fun{jjj,1}); % Obtain function handle
+                            arglist = regexp(f.function,'[@]{1,1}[(]{1,1}(.*)[)]{1,1}[(]{1,1}','tokens');
+                            arglist = regexp(arglist{1}{1},'[,]','split'); % Obtain arglist
+                            argstr = []; % Preallocate argument string
+                            for jjjj = 1:length(arglist) % For each argument
+                                arglist{jjjj} = obj.exp.nomen{strcmp(arglist{jjjj},obj.exp.nomen(:,1)),2}; % Rename arglist
+                                argstr = [argstr ',' arglist{jjjj}]; % Construct argstr
+                            end
+                            eval([obj.exp.random_fun{jjj,2} ' = obj.exp.random_fun{jjj,1}(' argstr(2:end) ');']); % Evaluate function handle with argstr
                         end
+                        incohdot = newdot; % Incoherent (random) dot array
+                        dot = [cohdot;incohdot]; % Combine arrays & rewrite dot
+                        
+                        % Bounds Check
+                        
+                        % Save array
+                        
                     end
                 end
                 
@@ -157,22 +186,25 @@ classdef ObjSet < handle
                         exp.(exp.pattern{p}).dir_rads = pi/2; % Horizontal
                         lin1 = @(rad,ppf)([cos(rad) sin(rad)]*ppf); % Motion vector (exp.linear.dir_rads,exp.ppf)
                         lin2 = @(mot,dot,dir)(dot + (repmat(mot, [length(dot) 1]) .* [repmat(dir, [length(dot) 1]) repmat(dir, [length(dot) 1])])); % New dot vector (output from lin1, dot vector, 1/-1)
-                        exp.(exp.pattern{p}).linear_fun = {lin1, lin2};
+                        exp.(exp.pattern{p}).linear_fun = {lin1, 'mot'; lin2, 'newdot'}; % Function handles and expected output
                     case 'radial' % Radial function handles
                         rad1 = @(dot)(atan2(dot(:,2),dot(:,1))); % Calculate theta (Dot array)
                         rad2 = @(theta,ppf,dir)([cos(theta) sin(theta)] .* repmat(ppf*dir,[length(theta) 2])); % Cos-Sin vector of theta values times motion matrix (output from rad1, exp.ppf, 1/-1)
                         rad3 = @(mot,dot)(dot + mot); % New dot vector (motion vector, dot array)
-                        exp.(exp.pattern{p}).radial_fun = {rad1, rad2, rad3};
+                        exp.(exp.pattern{p}).radial_fun = {rad1, 'theta'; rad2, 'mot'; rad3, 'newdot'}; % Function handles and expected output
                 end
             end
             
             % Random function handles
             rand1 = @(dot)(rand(length(dot), 1)*2*pi); % Random direction (Dot array)
             rand2 = @(dot,ppf,mot)(dot + (repmat(ppf,[length(dot) 2]) .* [cos(mot) sin(mot)])); % New dots created by adding random direction vector (Dot array, exp.ppf, output from rand1)
-            exp.random_fun = {rand1, rand2};
+            exp.random_fun = {rand1, 'mot'; rand2, 'newdot'}; % Function handles and expected output
             
             % Variable nomenclature
-            exp.nomen = {'rad','obj.exp.(pattern).dir_rads';'ppf','obj.exp.ppf'};
+            exp.nomen = {'dir', 'dir'; 'dot', 'dot_parsed'; ...
+                'mot', 'mot'; 'ppf', 'obj.exp.ppf'; ...
+                'rad', 'obj.exp.(pattern).dir_rads'; ...
+                'theta','theta'};
             
             % Dot parse function handle
             exp.dot.parse = @(dot,coh)(rand(size(dot(:,1))) < coh); % Variable each call
@@ -183,7 +215,6 @@ classdef ObjSet < handle
             exp.draw_fun = @(dot,w)(Screen('DrawDots',w,double(dot))); % Draw dots 
             exp.flip_fun = @(w)(Screen('Flip',w)); % Flip buffer
         end
-        
         
     end
     
