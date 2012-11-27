@@ -12,7 +12,6 @@ classdef ObjSet < handle
         function obj = ObjSet(sys,exp)
             obj.sys = sys;
             obj.exp = exp;
-            
         end
         
         function dotout = DotGen(obj) % DotGen method
@@ -197,10 +196,11 @@ classdef ObjSet < handle
             exp.dot.dens = .1; % Dot density fraction
             exp.dot.size_deg = .1; % Dot size (deg)
             exp.dot.size_pix = round(exp.dot.size_deg * sys.display.ppd); % Dot size (pix)
-            exp.dot.n = round( exp.dot.dens/(exp.dot.size_pix^2) * exp.mask.area ); % Number of dots
             exp.dot.field = [(sys.display.center(1) - exp.mask.annulus_pix(2)) (sys.display.center(2) - exp.mask.annulus_pix(2)) (sys.display.center(1) + exp.mask.annulus_pix(2)) (sys.display.center(2) + exp.mask.annulus_pix(2)) ]; % Dot field (pix)
-            exp.dot.prop = exp.mask.area/((exp.dot.field(3)-exp.dot.field(1))*(exp.dot.field(4)-exp.dot.field(2))); % Proportion of mask area relative to dot field
-            exp.dot.n_masked = round(exp.dot.n * exp.dot.prop); % Estimation of number of dots after mask
+            exp.dot.field_area = (exp.dot.field(3) - exp.dot.field(1))*(exp.dot.field(4) - exp.dot.field(2));
+            exp.dot.n = round( exp.dot.dens/(exp.dot.size_pix^2) * exp.dot.field_area ); % Number of dots for field
+            exp.dot.prop = exp.mask.area/exp.dot.field_area; % Proportion of mask area relative to dot field
+            exp.dot.n_masked = round(exp.dot.n*exp.dot.prop); % Number of estimated dots in masked area
             
             % Pattern Parameters
             for p = 1:length(exp.pattern);
