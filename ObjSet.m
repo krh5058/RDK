@@ -12,9 +12,10 @@ classdef ObjSet < handle
         function obj = ObjSet(sys,exp)
             obj.sys = sys;
             obj.exp = exp;
+            
         end
         
-        function dot = DotGen(obj) % DotGen method
+        function dotout = DotGen(obj) % DotGen method
             
             if obj.trial_n <= obj.exp.trial_n % Fail-safe
                 dot = zeros([obj.exp.dot.n 2]); % Pre-allocate dot array for new generation
@@ -27,7 +28,9 @@ classdef ObjSet < handle
                     pattern = obj.exp.pattern{randi([1 length(obj.exp.pattern)])}; % Randomly generate pattern type
                 end % End while
                 
-                dir = 1;
+                dir = 1; % Temp
+                
+                dotout = zeros([obj.exp.dot.n_masked 2 obj.exp.fr 2]); % Estimate of number dots for preallocation [x y frame stereo]
                 
                 for i = 1:1+obj.sys.display.dual % For each stereo display
                     for ii = 1:obj.exp.fr % For each frame 
@@ -61,9 +64,30 @@ classdef ObjSet < handle
                         dot = [cohdot;incohdot]; % Combine arrays & rewrite dot
                         
                         % Bounds Check
+                        xlo = find(dot(:,1) <= obj.exp.dot.field(1)); % X < XMin
+                        xhi = find(dot(:,1) >= obj.exp.dot.field(3)); % X > XMax
+                        ylo = find(dot(:,2) <= obj.exp.dot.field(2)); % Y < YMin
+                        yhi = find(dot(:,2) >= obj.exp.dot.field(4)); % Y > YMax
                         
-                        % Save array
+                        if any(xlo)
+                            dot(xlo,1) = obj.exp.dot.field(3) - (obj.exp.dot.field(1) - dot(xlo,1)); % Shifting X coordinates from left of dot field to left of right side of dot field
+                        end
+                        if any(xhi)
+                            dot(xhi,1) = obj.exp.dot.field(1) + (dot(xhi,1) - obj.exp.dot.field(3)); % Shifting X coordinates from right of dot field to right of left side of dot field
+                        end
+                        if any(ylo)
+                            dot(ylo,2) = obj.exp.dot.field(4) - (obj.exp.dot.field(2) - dot(ylo,2)); % Shifting Y coordinates from below dot field to below top of dot field
+                        end
+                        if any(yhi)
+                            dot(yhi,2) = obj.exp.dot.field(2) + (dot(yhi,2) - obj.exp.dot.field(4)); % Shifting Y coordinates from above dot field to above bottom of dot field
+                        end
                         
+                        % Mask
+                        r = sqrt((dot(:,1) - obj.sys.display.center(1)).^2 + (dot(:,2) - obj.sys.display.center(2)).^2); % Determine radii in polar space
+                        r_ind = (r >= obj.exp.mask.annulus_pix(1)) & (r <= obj.exp.mask.annulus_pix(2)); % Index of dots after mask
+                        
+                        % Output
+                        dotout(1:size(dot(rind,:),1),1:size(dot(rind,:),2),ii,i) = dot(r_ind,:); % Place 2-D array within frame and stereo index
                     end
                 end
                 
@@ -175,6 +199,8 @@ classdef ObjSet < handle
             exp.dot.size_pix = round(exp.dot.size_deg * sys.display.ppd); % Dot size (pix)
             exp.dot.n = round( exp.dot.dens/(exp.dot.size_pix^2) * exp.mask.area ); % Number of dots
             exp.dot.field = [(sys.display.center(1) - exp.mask.annulus_pix(2)) (sys.display.center(2) - exp.mask.annulus_pix(2)) (sys.display.center(1) + exp.mask.annulus_pix(2)) (sys.display.center(2) + exp.mask.annulus_pix(2)) ]; % Dot field (pix)
+            exp.dot.prop = exp.mask.area/((exp.dot.field(3)-exp.dot.field(1))*(exp.dot.field(4)-exp.dot.field(2))); % Proportion of mask area relative to dot field
+            exp.dot.n_masked = round(exp.dot.n * exp.dot.prop); % Estimation of number of dots after mask
             
             % Pattern Parameters
             for p = 1:length(exp.pattern);
