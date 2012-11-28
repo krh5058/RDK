@@ -3,6 +3,7 @@ classdef ObjSet < handle
     properties (SetObservable) 
         sys % System settings
         exp % Experimental parameter settings
+        out % Output recording
         trial_n = 1; % Trial counter
         t % Timer object
     end
@@ -15,7 +16,6 @@ classdef ObjSet < handle
         end
         
         function dotout = DotGen(obj) % DotGen method
-            
             if obj.trial_n <= obj.exp.trial_n % Fail-safe
                 dot = zeros([obj.exp.dot.n 2]); % Pre-allocate dot array for new generation
                 dot(:,1) = rand([obj.exp.dot.n 1])*(obj.exp.dot.field(3)-obj.exp.dot.field(1)) + ones([obj.exp.dot.n 1])*obj.exp.dot.field(1); % X coordinates (pix)
@@ -27,12 +27,21 @@ classdef ObjSet < handle
                     pattern = obj.exp.pattern{randi([1 length(obj.exp.pattern)])}; % Randomly generate pattern type
                 end % End while
                 
-                dir = 1; % Temp
+                obj.out{obj.trial_n,1} = obj.trial_n; % Trial count
+                obj.out{obj.trial_n,2} = pattern; % Pattern type
+                obj.out{obj.trial_n,3} = obj.exp.(pattern).coh(obj.exp.(pattern).count,1); % Left Coherence
+                obj.out{obj.trial_n,4} = obj.exp.(pattern).coh(obj.exp.(pattern).count,2); % Right Coherence
                 
-                dotout = zeros([obj.exp.dot.n_masked 2 obj.exp.fr 2]); % Estimate of number dots for preallocation [x y frame stereo]
+                dotout = single(zeros([obj.exp.dot.n_masked 2 obj.exp.fr 2])); % Estimate of number dots for preallocation [x y frame stereo]
                 
                 for i = 1:1+obj.sys.display.dual % For each stereo display
                     for ii = 1:obj.exp.fr % For each frame 
+                        % Direction reversals
+                        fr_in_cycle = mod( ii, obj.sys.display.fps*obj.exp.dutycycle ); % Current frame within duty cycle
+                        if fr_in_cycle == 1 % If current frame is first in the duty cycle
+                           obj.exp.drctn = -1*obj.exp.drctn; % Change direction
+                        end
+                        drctn = obj.exp.drctn; % Set drctn variable
                         dotindex = obj.exp.dot.parse(dot,obj.exp.(pattern).coh(obj.exp.(pattern).count,i)); % Use dot.parse to obtain an index of coherently-selected dots
                         dot_parsed = dot(dotindex,:); % Dot array using index
                         for iii = 1:length(obj.exp.(pattern).([pattern '_fun'])) 
@@ -86,7 +95,7 @@ classdef ObjSet < handle
                         r_ind = (r >= obj.exp.mask.annulus_pix(1)) & (r <= obj.exp.mask.annulus_pix(2)); % Index of dots after mask
                         
                         % Output
-                        dotout(1:size(dot(rind,:),1),1:size(dot(rind,:),2),ii,i) = dot(r_ind,:); % Place 2-D array within frame and stereo index
+                        dotout(1:size(dot(r_ind,:),1),1:size(dot(r_ind,:),2),ii,i) = dot(r_ind,:); % Place 2-D array within frame and stereo index
                     end
                 end
                 
@@ -99,6 +108,7 @@ classdef ObjSet < handle
     
     methods (Static)
         function sys = SysCheck
+            
             % Core size
             [~, core_out ] = system('sysctl -n hw.ncpu');
             sys.core = uint8(str2double(strtrim(core_out)));
@@ -172,6 +182,8 @@ classdef ObjSet < handle
             exp.pattern = {'radial','linear'}; % Pattern conditions
             exp.coherence = [.05 .1 .15 .2]; % Coherence conditions
             exp.v = 2; % Dot speed (deg/sec)
+            exp.dutycycle = .25; % Phase (default is 4-phase==.25) 
+            exp.drctn = 1; % 1/-1 for direction reversal
             exp.ppf  = exp.v * sys.display.ppd / sys.display.fps; % Dot speed (pix/frame)
             exp.trial_n = length(exp.pattern) * length(exp.coherence) * (2*exp.reverse); % Number of trials per block
             pres = [zeros([length(exp.coherence) 1]) exp.coherence']; % Constructing presentation matrix
@@ -188,9 +200,10 @@ classdef ObjSet < handle
                 
             % Fixation Parameters
             exp.fix = 1; % Fixation on or off (0/1)
-            exp.fix.size = .15; % Fixation size in degrees
+            exp.fix.size_deg = .15; % Fixation size in degrees
+            exp.fix.size_pix = exp.fix.size_deg*sys.display.ppd; % Fixation size in pixels
             exp.fix.color = sys.display.white; % Fixation color (default white)
-            exp.fix.coord = sys.display.center; % Fixation coordinates (center)
+            exp.fix.coord = [sys.display.center(1)-exp.fix.size_pix/2 sys.display.center(2)-exp.fix.size_pix/2 sys.display.center(1)+exp.fix.size_pix/2 sys.display.center(2)+exp.fix.size_pix/2]; % Fixation coordinates
             
             % Dot Parameters
             exp.dot.dens = .1; % Dot density fraction
@@ -211,11 +224,11 @@ classdef ObjSet < handle
                     case 'linear' % Linear function handles
                         exp.(exp.pattern{p}).dir_rads = pi/2; % Horizontal
                         lin1 = @(rad,ppf)([cos(rad) sin(rad)]*ppf); % Motion vector (exp.linear.dir_rads,exp.ppf)
-                        lin2 = @(mot,dot,dir)(dot + (repmat(mot, [length(dot) 1]) .* [repmat(dir, [length(dot) 1]) repmat(dir, [length(dot) 1])])); % New dot vector (output from lin1, dot vector, 1/-1)
+                        lin2 = @(mot,dot,drctn)(dot + (repmat(mot, [length(dot) 1]) .* [repmat(drctn, [length(dot) 1]) repmat(drctn, [length(dot) 1])])); % New dot vector (output from lin1, dot vector, 1/-1)
                         exp.(exp.pattern{p}).linear_fun = {lin1, 'mot'; lin2, 'newdot'}; % Function handles and expected output
                     case 'radial' % Radial function handles
                         rad1 = @(dot)(atan2(dot(:,2),dot(:,1))); % Calculate theta (Dot array)
-                        rad2 = @(theta,ppf,dir)([cos(theta) sin(theta)] .* repmat(ppf*dir,[length(theta) 2])); % Cos-Sin vector of theta values times motion matrix (output from rad1, exp.ppf, 1/-1)
+                        rad2 = @(theta,ppf,drctn)([cos(theta) sin(theta)] .* repmat(ppf*drctn,[length(theta) 2])); % Cos-Sin vector of theta values times motion matrix (output from rad1, exp.ppf, 1/-1)
                         rad3 = @(mot,dot)(dot + mot); % New dot vector (motion vector, dot array)
                         exp.(exp.pattern{p}).radial_fun = {rad1, 'theta'; rad2, 'mot'; rad3, 'newdot'}; % Function handles and expected output
                 end
@@ -227,7 +240,7 @@ classdef ObjSet < handle
             exp.random_fun = {rand1, 'mot'; rand2, 'newdot'}; % Function handles and expected output
             
             % Variable nomenclature
-            exp.nomen = {'dir', 'dir'; 'dot', 'dot_parsed'; ...
+            exp.nomen = {'drctn', 'drctn'; 'dot', 'dot_parsed'; ...
                 'mot', 'mot'; 'ppf', 'obj.exp.ppf'; ...
                 'rad', 'obj.exp.(pattern).dir_rads'; ...
                 'theta','theta'};
@@ -236,7 +249,7 @@ classdef ObjSet < handle
             exp.dot.parse = @(dot,coh)(rand(size(dot(:,1))) < coh); % Variable each call
             
             % Presentation function handles
-            exp.selectstero_fun = @(w,stereo)(Screen('SelectStereoDrawBuffer', w, stereo)); % Select stereo buffer to draw
+            exp.selectstereo_fun = @(w,stereo)(Screen('SelectStereoDrawBuffer', w, stereo)); % Select stereo buffer to draw
             exp.fix_fun = @(w,fix)(Screen('FillOval',w,fix.color,fix.coord)); % Draw fixation
             exp.draw_fun = @(dot,w)(Screen('DrawDots',w,double(dot))); % Draw dots 
             exp.flip_fun = @(w)(Screen('Flip',w)); % Flip buffer
