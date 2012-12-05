@@ -172,7 +172,7 @@ classdef ObjSet < handle
             sys.display.fps = Screen('FrameRate', sys.display.screenNumber); % Frame rate (hz)
             sys.display.ifi = 1/sys.display.fps; % Inverse frame rate
             
-            sys.display.ppd = pi * (sys.display.width_pix) / atan(sys.display.width_cm/sys.display.view_dist_cm/2) / 360; % Pixels per degree
+            sys.display.ppd = pi * (sys.display.width_pix) / atan(sys.display.width_cm/sys.display.view_dist_cm/2) / 180; % Pixels per degree
             
         end
         
@@ -188,7 +188,8 @@ classdef ObjSet < handle
             exp.fr = sys.display.fps*exp.trial_t; % Frames total
             exp.reverse = 1; % Reverse sides
             exp.pattern = {'radial','linear'}; % Pattern conditions
-            exp.coherence = [.05 .1 .15 .2]; % Coherence conditions
+%             exp.coherence = [.05 .1 .15 .2]; % Coherence conditions
+             exp.coherence = [.5 .6 .7 .8]; % Coherence conditions
             exp.v = 2; % Dot speed (deg/sec)
             exp.dutycycle = .25; % Phase (default is 4-phase==.25) 
             exp.drctn = 1; % 1/-1 for direction reversal
@@ -200,7 +201,7 @@ classdef ObjSet < handle
             end
 
             % Mask Constraint Parameters
-            exp.mask.annulus_deg = [5 10]; % Annulus radius minimum and maximum (deg)
+            exp.mask.annulus_deg = [2 5]; % Annulus radius minimum and maximum (deg)
             exp.mask.annulus_pix = exp.mask.annulus_deg * sys.display.ppd; % Annulus radius minimum and maximum (pix)
             outerA = pi*exp.mask.annulus_pix(2)^2;
             innerA = pi*exp.mask.annulus_pix(1)^2;
@@ -214,7 +215,7 @@ classdef ObjSet < handle
             exp.fix.coord = [sys.display.center(1)-exp.fix.size_pix/2 sys.display.center(2)-exp.fix.size_pix/2 sys.display.center(1)+exp.fix.size_pix/2 sys.display.center(2)+exp.fix.size_pix/2]; % Fixation coordinates
             
             % Dot Parameters
-            exp.dot.dens = .1; % Dot density fraction
+            exp.dot.dens = .15; % Dot density fraction
             exp.dot.size_deg = .1; % Dot size (deg)
             exp.dot.size_pix = round(exp.dot.size_deg * sys.display.ppd); % Dot size (pix)
             exp.dot.field = [(sys.display.center(1) - exp.mask.annulus_pix(2)) (sys.display.center(2) - exp.mask.annulus_pix(2)) (sys.display.center(1) + exp.mask.annulus_pix(2)) (sys.display.center(2) + exp.mask.annulus_pix(2)) ]; % Dot field (pix)
@@ -235,7 +236,7 @@ classdef ObjSet < handle
                         lin2 = @(mot,dot,drctn)(dot + (repmat(mot, [length(dot) 1]) .* [repmat(drctn, [length(dot) 1]) repmat(drctn, [length(dot) 1])])); % New dot vector (output from lin1, dot vector, 1/-1)
                         exp.(exp.pattern{p}).linear_fun = {lin1, 'mot'; lin2, 'newdot'}; % Function handles and expected output
                     case 'radial' % Radial function handles
-                        rad1 = @(dot)(atan2(dot(:,2),dot(:,1))); % Calculate theta (Dot array)
+                        rad1 = @(dot)(atan2(dot(:,2)-sys.display.center(2),dot(:,1)-sys.display.center(1))); % Calculate theta (Dot array), relative to center
                         rad2 = @(theta,ppf,drctn)([cos(theta) sin(theta)] .* repmat(ppf*drctn,[length(theta) 2])); % Cos-Sin vector of theta values times motion matrix (output from rad1, exp.ppf, 1/-1)
                         rad3 = @(mot,dot)(dot + mot); % New dot vector (motion vector, dot array)
                         exp.(exp.pattern{p}).radial_fun = {rad1, 'theta'; rad2, 'mot'; rad3, 'newdot'}; % Function handles and expected output
