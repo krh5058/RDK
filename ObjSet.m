@@ -109,6 +109,10 @@ classdef ObjSet < handle
     methods (Static)
         function sys = SysCheck
             
+            % Set PTB path dependencies
+            p = pathdef;
+            matlabpath(p);
+            
             % Core size
             [~, core_out ] = system('sysctl -n hw.ncpu');
             sys.core = uint8(str2double(strtrim(core_out)));
@@ -137,9 +141,9 @@ classdef ObjSet < handle
             sys.buffer = 3*1024*1024*1024; % Buffer size (bytes): 3GB -- Guideline from MathWorks for 32-bit
             
             % Opening multiple labs (default is equal to number of cores
-            matlabpool;
+%             matlabpool;
             
-            % Display Settings
+%             % Display Settings
             sys.display.screens = Screen('Screens'); % Screens available
             sys.display.screenNumber = max( sys.display.screens ); % Screen to use
             
@@ -173,6 +177,10 @@ classdef ObjSet < handle
         end
         
         function exp = ExpSet(sys)
+            
+            % Set PTB path dependencies
+            p = pathdef;
+            matlabpath(p);
             
             % General Experimental Parameters
             exp.block = 5; % Number of blocks
