@@ -1,6 +1,7 @@
 classdef ObjSet < handle
     %
-    properties (SetObservable) 
+    properties (SetObservable)
+        dotStore  % Dot storage
         sys % System settings
         exp % Experimental parameter settings
         out % Output recording
@@ -13,6 +14,7 @@ classdef ObjSet < handle
         function obj = ObjSet(sys,exp)
             obj.sys = sys;
             obj.exp = exp;
+            obj.dotStore = cell([1 exp.trial_n]);
         end
         
         function dotout = DotGen(obj) % DotGen method
@@ -98,20 +100,27 @@ classdef ObjSet < handle
                         dotout(1:size(dot(r_ind,:),1),1:size(dot(r_ind,:),2),ii,i) = dot(r_ind,:); % Place 2-D array within frame and stereo index
                     end
                 end
-                
+                obj.dotStore{find(cellfun(@isempty,obj.dotStore),1)} = dotout;
                 obj.exp.(pattern).count = obj.exp.(pattern).count + 1; % Add to pattern count
                 obj.trial_n = obj.trial_n + 1; % Add to trial count
             end
-            
         end
-    end
+            
+        function batchDot(obj)
+            if obj.trial_n <= obj.exp.trial_n
+                obj.DotGen;
+                obj.batchDot;
+            end
+        end
     
+    end
+
     methods (Static)
         function sys = SysCheck
             
-            % Set PTB path dependencies
-            p = pathdef;
-            matlabpath(p);
+%             % Set PTB path dependencies
+%             p = pathdef;
+%             matlabpath(p);
             
             % Core size
             [~, core_out ] = system('sysctl -n hw.ncpu');
@@ -178,9 +187,9 @@ classdef ObjSet < handle
         
         function exp = ExpSet(sys)
             
-            % Set PTB path dependencies
-            p = pathdef;
-            matlabpath(p);
+%             % Set PTB path dependencies
+%             p = pathdef;
+%             matlabpath(p);
             
             % General Experimental Parameters
             exp.block = 5; % Number of blocks
