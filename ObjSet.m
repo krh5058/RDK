@@ -6,7 +6,7 @@ classdef ObjSet < handle
         exp % Experimental parameter settings
         out % Output recording
         trial_n = 1; % Trial counter
-        t % Timer object
+%         t % Timer object
     end
     
     methods
@@ -74,22 +74,58 @@ classdef ObjSet < handle
                         dot = [cohdot;incohdot]; % Combine arrays & rewrite dot
                         
                         % Bounds Check
-                        xlo = find(dot(:,1) <= obj.exp.dot.field(1)); % X < XMin
-                        xhi = find(dot(:,1) >= obj.exp.dot.field(3)); % X > XMax
-                        ylo = find(dot(:,2) <= obj.exp.dot.field(2)); % Y < YMin
-                        yhi = find(dot(:,2) >= obj.exp.dot.field(4)); % Y > YMax
-                        
-                        if any(xlo)
-                            dot(xlo,1) = obj.exp.dot.field(3) - (obj.exp.dot.field(1) - dot(xlo,1)); % Shifting X coordinates from left of dot field to left of right side of dot field
-                        end
-                        if any(xhi)
-                            dot(xhi,1) = obj.exp.dot.field(1) + (dot(xhi,1) - obj.exp.dot.field(3)); % Shifting X coordinates from right of dot field to right of left side of dot field
-                        end
-                        if any(ylo)
-                            dot(ylo,2) = obj.exp.dot.field(4) - (obj.exp.dot.field(2) - dot(ylo,2)); % Shifting Y coordinates from below dot field to below top of dot field
-                        end
-                        if any(yhi)
-                            dot(yhi,2) = obj.exp.dot.field(2) + (dot(yhi,2) - obj.exp.dot.field(4)); % Shifting Y coordinates from above dot field to above bottom of dot field
+                        switch pattern
+                            case 'radial'
+                                % Because radial motion is applied directly
+                                % into xy-plane, it is difficult to analyze
+                                % what radii will be < 0 after motion is
+                                % applied.  For now, a buffer will be
+                                % applied
+                                % (obj.exp.mask.annulus_buffer_pix).
+                                % Anything greater than the outer radius
+                                % plus the buffer will be recycled to the
+                                % inner minus the buffer (0 if the latter
+                                % is less than 0).  Vice versa for anything
+                                % smaller than the inner radius minus the
+                                % buffer.  This works ideally if an inner
+                                % radius is applied because dots need to be
+                                % within the inner radius minus the buffer
+                                % for recycling to the outer ring to occur.
+                                r = sqrt((dot(:,1)-obj.sys.display.center(1)).^2 + (dot(:,2)-obj.sys.display.center(2)).^2);
+                                t = atan2(dot(:,2)-obj.sys.display.center(2),dot(:,1)-obj.sys.display.center(1));
+                                rhi = r > obj.exp.mask.annulus_pix(2) + obj.exp.mask.annulus_buffer_pix;
+                                rlo = r < obj.exp.mask.annulus_pix(1) - obj.exp.mask.annulus_buffer_pix;
+                                if any(rhi)
+                                    if (obj.exp.mask.annulus_pix(1) - obj.exp.mask.annulus_buffer_pix) > 0
+                                        r(rhi) = obj.exp.mask.annulus_pix(1) - obj.exp.mask.annulus_buffer_pix; % Bring back to inner + buffer
+                                    else
+                                        r(rhi) = 0;
+                                    end
+                                end
+                                if any(rlo)
+                                    r(rlo) = obj.exp.mask.annulus_pix(2) + obj.exp.mask.annulus_buffer_pix; % Bring to out + buffer
+                                end
+                                dot(:,1) = (r.*cos( t ))+obj.sys.display.center(1);
+                                dot(:,2) = (r.*sin( t ))+obj.sys.display.center(2);
+                                
+                            case 'linear'
+                                xlo = find(dot(:,1) <= obj.exp.dot.field(1)); % X < XMin
+                                xhi = find(dot(:,1) >= obj.exp.dot.field(3)); % X > XMax
+                                ylo = find(dot(:,2) <= obj.exp.dot.field(2)); % Y < YMin
+                                yhi = find(dot(:,2) >= obj.exp.dot.field(4)); % Y > YMax
+                                
+                                if any(xlo)
+                                    dot(xlo,1) = obj.exp.dot.field(3) - (obj.exp.dot.field(1) - dot(xlo,1)); % Shifting X coordinates from left of dot field to left of right side of dot field
+                                end
+                                if any(xhi)
+                                    dot(xhi,1) = obj.exp.dot.field(1) + (dot(xhi,1) - obj.exp.dot.field(3)); % Shifting X coordinates from right of dot field to right of left side of dot field
+                                end
+                                if any(ylo)
+                                    dot(ylo,2) = obj.exp.dot.field(4) - (obj.exp.dot.field(2) - dot(ylo,2)); % Shifting Y coordinates from below dot field to below top of dot field
+                                end
+                                if any(yhi)
+                                    dot(yhi,2) = obj.exp.dot.field(2) + (dot(yhi,2) - obj.exp.dot.field(4)); % Shifting Y coordinates from above dot field to above bottom of dot field
+                                end
                         end
                         
                         % Mask
@@ -199,7 +235,7 @@ classdef ObjSet < handle
             exp.pattern = {'radial','linear'}; % Pattern conditions
 %             exp.coherence = [.05 .1 .15 .2]; % Coherence conditions
              exp.coherence = [.5 .6 .7 .8]; % Coherence conditions
-            exp.v = 2; % Dot speed (deg/sec)
+            exp.v = 16; % Dot speed (deg/sec)
             exp.dutycycle = .25; % Phase (default is 4-phase==.25) 
             exp.drctn = 1; % 1/-1 for direction reversal
             exp.ppf  = exp.v * sys.display.ppd / sys.display.fps; % Dot speed (pix/frame)
@@ -211,7 +247,9 @@ classdef ObjSet < handle
 
             % Mask Constraint Parameters
             exp.mask.annulus_deg = [2 5]; % Annulus radius minimum and maximum (deg)
+            exp.mask.annulus_buffer_deg = 1; % Buffer radius to be recycled
             exp.mask.annulus_pix = exp.mask.annulus_deg * sys.display.ppd; % Annulus radius minimum and maximum (pix)
+            exp.mask.annulus_buffer_pix = exp.mask.annulus_buffer_deg * sys.display.ppd; % Buffer radius (pix)
             outerA = pi*exp.mask.annulus_pix(2)^2;
             innerA = pi*exp.mask.annulus_pix(1)^2;
             exp.mask.area = outerA - innerA; % Total area (pixels)

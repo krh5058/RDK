@@ -4,10 +4,10 @@ matlabpath(p);
 sys = ObjSet.SysCheck;
 exp = ObjSet.ExpSet(sys);
 obj = ObjSet(sys,exp);
-obj.batchDot;
-save('test.mat','obj');
-quit
-% dot = obj.DotGen;
+% obj.batchDot;
+% save('testout.mat','obj');
+% quit
+dot = obj.DotGen;
 w = Screen('OpenWindow',1,0,[],[],[],4);
 % dot = cell([3 1]);
 % 
@@ -24,9 +24,9 @@ w = Screen('OpenWindow',1,0,[],[],[],4);
 % 
 for ii = 1
     for i = 1:600
-        obj.exp.draw_fun(dot{10}(:,:,i,1)',w);
+        obj.exp.draw_fun(dot(:,:,i,1)',w);
         obj.exp.selectstereo_fun(w,1);
-        obj.exp.draw_fun(dot{10}(:,:,i,2)',w);
+        obj.exp.draw_fun(dot(:,:,i,2)',w);
         pause(.03);
         obj.exp.flip_fun(w);
     end
