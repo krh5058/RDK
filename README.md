@@ -5,6 +5,24 @@ Random Dot Kinetogram Project - PSU, SLEIC, Gilmore Lab
 
 Author: Ken Hwang
 
+12/19/12
+
+Added temporary solution to radial dot recycling.  Need to talk to Rick for better algorithm.
+Ditched parallel dot generation and shell scripting.
+Changed batchDot to trialDot.
+Added new batchDot method to run dot generation through every block.
+Expanded obj.dotStore and obj.out to accommodate for every block.
+Added time estimate (calculated from average of new property obj.gen_times)
+Saving obj to ./exp/trial-date.
+
+ToDo:
+Need new methods for:
+- Dot display
+	- Timer object
+	- Record presentation and appropriately draw to stereo
+- Response Recording
+- Output
+
 12/14/12
 
 Google Docs now documented under ReadMe.md
@@ -17,7 +35,7 @@ ToDo:
 
 Need new methods for:
 - Dot display
-  - Timer object
+	- Timer object
 	- Record presentation and appropriately draw to stereo
 - UI Recording
 	- Combine dot display with keyboard pressing using spmd
@@ -62,7 +80,7 @@ Need new methods for:
 
 11/27/12
 
-Added bounds check, masking, and output â€˜dotoutâ€™ to DotGen.
+Added bounds check, masking, and output ÔdotoutÕ to DotGen.
 Fixed exp.dot.n to equal # of dots in dot field.exp.dot.n_masked is # of dots after mask.
 
 11-15-12
@@ -70,7 +88,7 @@ Fixed exp.dot.n to equal # of dots in dot field.exp.dot.n_masked is # of dots af
 ToDo:
 DotGen.m
 - Bounds Check and Dot Recycle
-- Apply Mask (Canâ€™t sparse with singles -- will use NaN)
+- Apply Mask (CanÕt sparse with singles -- will use NaN)
 - Save Final Array (3-d array) -- each frame will contain a 2 column array -- 2560x2x600
 - Fix fixation draw -- coordinates
 - Add direction reversals
@@ -83,7 +101,7 @@ Need new methods for:
 - Use Client to generate dots or worker?
 	- How to access new created dots?
 
-- New method: DotGen.  Output is dot.  It first creates a randomized dot vector, then it randomly draws a pattern type.  If the pattern typeâ€™s count has exceeded the count limit, then it will redraw until it finds another.  DotGet has a set of for loops to generate dot motion for each stereo display, at each frame, and for each pattern.  After parsing a dot index based on coherence value, it evaluates coherent dots then incoherent.  For each set, it will run through the list of function handles outlined in ExpSet.  For each function, an argument list is generated and by using exp.nomen, converts the shorthand argument list into actual variable calls.  The expected function output, function handle, and argument list are fed into eval() for every function call.  Afterwards, cohdot and incohdot matrices are combined and rewrites the â€˜dotâ€™ variable.
+- New method: DotGen.  Output is dot.  It first creates a randomized dot vector, then it randomly draws a pattern type.  If the pattern typeÕs count has exceeded the count limit, then it will redraw until it finds another.  DotGet has a set of for loops to generate dot motion for each stereo display, at each frame, and for each pattern.  After parsing a dot index based on coherence value, it evaluates coherent dots then incoherent.  For each set, it will run through the list of function handles outlined in ExpSet.  For each function, an argument list is generated and by using exp.nomen, converts the shorthand argument list into actual variable calls.  The expected function output, function handle, and argument list are fed into eval() for every function call.  Afterwards, cohdot and incohdot matrices are combined and rewrites the ÔdotÕ variable.
 - Removed dot.init.  Relocated randomized initial dot vector to DotGen
 - Organized experimental coherence conditions to separate pattern structures.
 - Added exp.nomen to convert string values of function handles into variable string calls
@@ -97,7 +115,7 @@ Need new methods for:
 - Added function handles for linear, radial, and random.
 	- Tested all function handles
 - Added initial dot array, converted to single = 13104 bytes
-	- Need to double-check.  It seems that â€˜DrawDotsâ€™ does not accept single class values.
+	- Need to double-check.  It seems that ÔDrawDotsÕ does not accept single class values.
 - According to Mathworks, the largest workspace for a 32-bit MatLab is ~3GB.  However, we are running 64-bit OSX with 64-bit MatLab (8 GB RAM).  According to these calculations:
 - 3 GB / 13104 Bytes = 2.4582*10^5 dot arrays
 - 2.4582*10^5 / (60 Hz * 10s) = 409.7 entire 10 second run
@@ -118,7 +136,7 @@ ToDo:
 Update old rdk or modify dmdt?
 
 Update rdk: 
-	- Canâ€™t run multiple motion types in single block
+	- CanÕt run multiple motion types in single block
 	- No break screens implemented
 	- Front-end undeveloped
 
