@@ -4,8 +4,10 @@ classdef ObjSet < handle
         dotStore  % Dot storage
         sys % System settings
         exp % Experimental parameter settings
-        out % Output recording
-        trial_n = 1; % Trial counter
+        out = []; % Output recording
+        block_count = 1; % Block counter
+        trial_count = 1; % Trial counter
+        gen_times = []; % Calculated generation times
 %         t % Timer object
     end
     
@@ -14,11 +16,11 @@ classdef ObjSet < handle
         function obj = ObjSet(sys,exp)
             obj.sys = sys;
             obj.exp = exp;
-            obj.dotStore = cell([1 exp.trial_n]);
+            obj.dotStore = cell([exp.trial_n exp.block]);
         end
         
         function dotout = DotGen(obj) % DotGen method
-            if obj.trial_n <= obj.exp.trial_n % Fail-safe
+            if obj.trial_count <= obj.exp.trial_n % Fail-safe
                 dot = zeros([obj.exp.dot.n 2]); % Pre-allocate dot array for new generation
                 dot(:,1) = rand([obj.exp.dot.n 1])*(obj.exp.dot.field(3)-obj.exp.dot.field(1)) + ones([obj.exp.dot.n 1])*obj.exp.dot.field(1); % X coordinates (pix)
                 dot(:,2) = rand([obj.exp.dot.n 1])*(obj.exp.dot.field(4)-obj.exp.dot.field(2)) + ones([obj.exp.dot.n 1])*obj.exp.dot.field(2); % Y coordinates (pix)
@@ -29,10 +31,11 @@ classdef ObjSet < handle
                     pattern = obj.exp.pattern{randi([1 length(obj.exp.pattern)])}; % Randomly generate pattern type
                 end % End while
                 
-                obj.out{obj.trial_n,1} = obj.trial_n; % Trial count
-                obj.out{obj.trial_n,2} = pattern; % Pattern type
-                obj.out{obj.trial_n,3} = obj.exp.(pattern).coh(obj.exp.(pattern).count,1); % Left Coherence
-                obj.out{obj.trial_n,4} = obj.exp.(pattern).coh(obj.exp.(pattern).count,2); % Right Coherence
+                obj.out{end+1,1} = obj.block_count; % Block count
+                obj.out{end,2} = obj.trial_count; % Trial count
+                obj.out{end,3} = pattern; % Pattern type
+                obj.out{end,4} = obj.exp.(pattern).coh(obj.exp.(pattern).count,1); % Left Coherence
+                obj.out{end,5} = obj.exp.(pattern).coh(obj.exp.(pattern).count,2); % Right Coherence
                 
                 dotout = single(zeros([obj.exp.dot.n_masked 2 obj.exp.fr 2])); % Estimate of number dots for preallocation [x y frame stereo]
                 
@@ -136,16 +139,45 @@ classdef ObjSet < handle
                         dotout(1:size(dot(r_ind,:),1),1:size(dot(r_ind,:),2),ii,i) = dot(r_ind,:); % Place 2-D array within frame and stereo index
                     end
                 end
-                obj.dotStore{find(cellfun(@isempty,obj.dotStore),1)} = dotout;
+                obj.dotStore{obj.trial_count,obj.block_count} = dotout; % Save to dotStore property
                 obj.exp.(pattern).count = obj.exp.(pattern).count + 1; % Add to pattern count
-                obj.trial_n = obj.trial_n + 1; % Add to trial count
+                obj.trial_count = obj.trial_count + 1; % Add to trial count
             end
         end
             
         function batchDot(obj)
-            if obj.trial_n <= obj.exp.trial_n
+            
+            
+            
+            for i = 1:obj.exp.block
+                obj.block_count = i; % Setting block count
+                obj.trialDot;
+                
+                % Resetting count values (trial_count and pattern type
+                % counts)
+                obj.trial_count = 1;
+                for j = 1:length(obj.exp.pattern)
+                    pattern = obj.exp.pattern{j};
+                    obj.exp.(pattern).count = 1;
+                end
+            end
+            
+            save([obj.exp.objpath filesep 'obj.mat'],'obj'); % Saving object
+            
+        end
+        
+        function trialDot(obj)
+            if obj.trial_count <= obj.exp.trial_n
+                fprintf('RDK: Populating block %i trial %i ... \n',obj.block_count,obj.trial_count); % Reporting block and trial count
+                if ~isempty(obj.gen_times) % Reporting time remaining estimate based on previous trial generation time estimate
+                    trial_remaining = ((obj.exp.block - obj.block_count)*obj.exp.trial_n) + (obj.exp.trial_n - obj.trial_count + 1);
+                    time_remaining = trial_remaining * mean(obj.gen_times);
+                    fprintf('RDK: Estimated time remaining = %4f sec (%2.1f min). \n', time_remaining, time_remaining/60);
+                end
+                tic;
                 obj.DotGen;
-                obj.batchDot;
+                obj.gen_times = [obj.gen_times toc] % Accumulating trial generation times
+                obj.trialDot; % Recursive call
             end
         end
     
@@ -222,24 +254,26 @@ classdef ObjSet < handle
         end
         
         function exp = ExpSet(sys)
-            
-%             % Set PTB path dependencies
-%             p = pathdef;
-%             matlabpath(p);
-            
+            % Path
+            path = mfilename('fullpath');
+            [exp.path,~,~] = fileparts(path);
+            mkdir([exp.path filesep 'exp' filesep datestr(now,30)]);
+            exp.objpath = [exp.path filesep 'exp' filesep datestr(now,30)];
+
             % General Experimental Parameters
             exp.block = 5; % Number of blocks
             exp.trial_t = 10; % Trial duration (sec)
             exp.fr = sys.display.fps*exp.trial_t; % Frames total
             exp.reverse = 1; % Reverse sides
             exp.pattern = {'radial','linear'}; % Pattern conditions
-%             exp.coherence = [.05 .1 .15 .2]; % Coherence conditions
-             exp.coherence = [.5 .6 .7 .8]; % Coherence conditions
-            exp.v = 16; % Dot speed (deg/sec)
+            exp.coherence = [.05 .1 .15 .2]; % Coherence conditions
+%              exp.coherence = [.5 .6 .7 .8]; % Coherence conditions
+            exp.v = 2; % Dot speed (deg/sec)
             exp.dutycycle = .25; % Phase (default is 4-phase==.25) 
             exp.drctn = 1; % 1/-1 for direction reversal
             exp.ppf  = exp.v * sys.display.ppd / sys.display.fps; % Dot speed (pix/frame)
             exp.trial_n = length(exp.pattern) * length(exp.coherence) * (2*exp.reverse); % Number of trials per block
+            exp.trial_total = exp.trial_n * exp.block; % Total amount of trials
             pres = [zeros([length(exp.coherence) 1]) exp.coherence']; % Constructing presentation matrix
             if exp.reverse
                 pres = [pres; [pres(:,2) pres(:,1)]];  % Include reversed eyes
