@@ -4,19 +4,28 @@ classdef ObjSet < handle
         dotStore  % Dot storage
         sys % System settings
         exp % Experimental parameter settings
+        pres % Presentation Properties
         out = []; % Output recording
         block_count = 1; % Block counter
         trial_count = 1; % Trial counter
         gen_times = []; % Calculated generation times
-%         t % Timer object
+        t % Timer object
     end
     
     methods
         
-        function obj = ObjSet(sys,exp)
+        function obj = ObjSet(sys,exp,pres)
             obj.sys = sys;
             obj.exp = exp;
+            obj.pres = pres;
             obj.dotStore = cell([exp.trial_n exp.block]);
+            warning('off','MATLAB:TIMER:RATEPRECISION');
+            obj.t = timer('StartFcn',@(x,y)obj.start_fcn, ...
+                'TimerFcn',@(x,y)obj.timer_fcn, ...
+                'StopFcn',@(x,y)obj.stop_fcn, ...
+                'TasksToExecute',obj.exp.fr, ... 
+                'Period',obj.sys.display.ifi, ...
+                'ExecutionMode','fixedRate');
         end
         
         function dotout = DotGen(obj) % DotGen method
@@ -147,8 +156,6 @@ classdef ObjSet < handle
             
         function batchDot(obj)
             
-            
-            
             for i = 1:obj.exp.block
                 obj.block_count = i; % Setting block count
                 obj.trialDot;
@@ -162,7 +169,7 @@ classdef ObjSet < handle
                 end
             end
             
-            save([obj.exp.objpath filesep 'obj.mat'],'obj'); % Saving object
+            obj.saveToStruct([obj.exp.objpath filesep 'obj.mat']); % Saving object
             
         end
         
@@ -172,15 +179,61 @@ classdef ObjSet < handle
                 if ~isempty(obj.gen_times) % Reporting time remaining estimate based on previous trial generation time estimate
                     trial_remaining = ((obj.exp.block - obj.block_count)*obj.exp.trial_n) + (obj.exp.trial_n - obj.trial_count + 1);
                     time_remaining = trial_remaining * mean(obj.gen_times);
-                    fprintf('RDK: Estimated time remaining = %4f sec (%2.1f min). \n', time_remaining, time_remaining/60);
+                    fprintf('RDK: Estimated time remaining = %4.2f sec (%2.1f min). \n', time_remaining, time_remaining/60);
                 end
                 tic;
                 obj.DotGen;
-                obj.gen_times = [obj.gen_times toc] % Accumulating trial generation times
+                obj.gen_times = [obj.gen_times toc]; % Accumulating trial generation times
                 obj.trialDot; % Recursive call
             end
         end
     
+        function saveToStruct(obj, filename)
+            varname = inputname(1);
+            props = properties(obj);
+            for p = 1:numel(props)
+                s.(props{p})=obj.(props{p});
+            end
+            eval([varname ' = s;'])
+            fprintf('RDK: Saving object structure.  One moment ... \n');
+            save(filename, varname)
+        end
+        
+        function start_fcn(obj)
+            if obj.sys.display.dual
+                obj.pres.blank_fun(obj.sys.display.w,obj.sys.display.black );
+                obj.pres.flip_fun(obj.sys.display.w);
+                KbStrokeWait;
+                obj.pres.fixL_fun(obj.sys.display.w,obj.exp.fix);
+                obj.pres.selectstereo_fun(obj.sys.display.w,1);
+                obj.pres.fixR_fun(obj.sys.display.w,obj.exp.fix);
+                obj.pres.flip_fun(obj.sys.display.w);
+                KbStrokeWait;
+                obj.pres.flip_fun(obj.sys.display.w);
+            else
+                obj.pres.blank_fun(obj.sys.display.w,obj.sys.display.black );
+                obj.pres.flip_fun(obj.sys.display.w);
+                KbStrokeWait;
+                obj.pres.fix_fun(obj.sys.display.w,obj.exp.fix);
+                obj.pres.flip_fun(obj.sys.display.w);
+                KbStrokeWait;
+                obj.pres.flip_fun(obj.sys.display.w);
+            end
+        end
+        
+        function timer_fcn(obj)
+            if obj.t.TasksExecuted < obj.exp.fr
+                obj.pres.draw_fun(obj.dotStore{1,1}(:,:,obj.t.TasksExecuted+1,1),obj.sys.display.w);
+                obj.pres.selectstereo_fun(obj.sys.display.w,1);
+                obj.pres.draw_fun(obj.dotStore{1,1}(:,:,obj.t.TasksExecuted+1,2),obj.sys.display.w);
+                obj.pres.flip_fun(obj.sys.display.w);
+            end
+        end
+                
+        function stop_fcn(obj)
+            Screen('CloseAll');
+        end
+        
     end
 
     methods (Static)
@@ -220,7 +273,7 @@ classdef ObjSet < handle
             % Opening multiple labs (default is equal to number of cores
 %             matlabpool;
             
-%             % Display Settings
+            % Display Settings
             sys.display.screens = Screen('Screens'); % Screens available
             sys.display.screenNumber = max( sys.display.screens ); % Screen to use
             
@@ -232,8 +285,10 @@ classdef ObjSet < handle
             
             if sys.display.dual
                 sys.display.rw_pix = sys.display.width_pix_half;
+                sys.display.stereo = 4; % Stereo value for 'Screen'
             else
                 sys.display.rw_pix = sys.display.width_pix_full;
+                sys.display.stereo = []; % Stereo value for 'Screen'
             end
             
             sys.display.rect = [0  0 sys.display.rw_pix sys.display.height_pix]; % Rectangle to use (pix)
@@ -257,8 +312,8 @@ classdef ObjSet < handle
             % Path
             path = mfilename('fullpath');
             [exp.path,~,~] = fileparts(path);
-            mkdir([exp.path filesep 'exp' filesep datestr(now,30)]);
             exp.objpath = [exp.path filesep 'exp' filesep datestr(now,30)];
+            mkdir(exp.objpath);
 
             % General Experimental Parameters
             exp.block = 5; % Number of blocks
@@ -274,9 +329,9 @@ classdef ObjSet < handle
             exp.ppf  = exp.v * sys.display.ppd / sys.display.fps; % Dot speed (pix/frame)
             exp.trial_n = length(exp.pattern) * length(exp.coherence) * (2*exp.reverse); % Number of trials per block
             exp.trial_total = exp.trial_n * exp.block; % Total amount of trials
-            pres = [zeros([length(exp.coherence) 1]) exp.coherence']; % Constructing presentation matrix
+            presmat = [zeros([length(exp.coherence) 1]) exp.coherence']; % Constructing presentation matrix
             if exp.reverse
-                pres = [pres; [pres(:,2) pres(:,1)]];  % Include reversed eyes
+                presmat = [presmat; [presmat(:,2) presmat(:,1)]];  % Include reversed eyes
             end
 
             % Mask Constraint Parameters
@@ -293,7 +348,14 @@ classdef ObjSet < handle
             exp.fix.size_deg = .15; % Fixation size in degrees
             exp.fix.size_pix = exp.fix.size_deg*sys.display.ppd; % Fixation size in pixels
             exp.fix.color = sys.display.white; % Fixation color (default white)
-            exp.fix.coord = [sys.display.center(1)-exp.fix.size_pix/2 sys.display.center(2)-exp.fix.size_pix/2 sys.display.center(1)+exp.fix.size_pix/2 sys.display.center(2)+exp.fix.size_pix/2]; % Fixation coordinates
+            
+            if sys.display.dual
+                exp.fix.coord = zeros([2 4]);
+                exp.fix.coord(1,:) = [sys.display.rw_pix-exp.fix.size_pix/2 sys.display.center(2)-exp.fix.size_pix/2 sys.display.rw_pix+exp.fix.size_pix/2 sys.display.center(2)+exp.fix.size_pix/2]; % Fixation coordinates (Left)
+                exp.fix.coord(2,:) = [0-exp.fix.size_pix/2 sys.display.center(2)-exp.fix.size_pix/2 0+exp.fix.size_pix/2 sys.display.center(2)+exp.fix.size_pix/2]; % Fixation coordinates (Right)
+            else
+                exp.fix.coord = [sys.display.center(1)-exp.fix.size_pix/2 sys.display.center(2)-exp.fix.size_pix/2 sys.display.center(1)+exp.fix.size_pix/2 sys.display.center(2)+exp.fix.size_pix/2]; % Fixation coordinates
+            end
             
             % Dot Parameters
             exp.dot.dens = .15; % Dot density fraction
@@ -307,8 +369,8 @@ classdef ObjSet < handle
             
             % Pattern Parameters
             for p = 1:length(exp.pattern);
-                [pres_shuffle1,shufflesort] = Shuffle(pres(:,1)); % Shuffle first column of pres
-                exp.(exp.pattern{p}).coh = [pres_shuffle1 pres(shufflesort,2)]; % Reconstruct with sorted second column -- apply to pattern structure
+                [pres_shuffle1,shufflesort] = Shuffle(presmat(:,1)); % Shuffle first column of pres
+                exp.(exp.pattern{p}).coh = [pres_shuffle1 presmat(shufflesort,2)]; % Reconstruct with sorted second column -- apply to pattern structure
                 exp.(exp.pattern{p}).count = 1; % Initialize count
                 switch exp.pattern{p} 
                     case 'linear' % Linear function handles
@@ -337,12 +399,25 @@ classdef ObjSet < handle
             
             % Dot parse function handle
             exp.dot.parse = @(dot,coh)(rand(size(dot(:,1))) < coh); % Variable each call
+
+        end
+        
+        function pres = PresSet(sys)
             
             % Presentation function handles
-            exp.selectstereo_fun = @(w,stereo)(Screen('SelectStereoDrawBuffer', w, stereo)); % Select stereo buffer to draw
-            exp.fix_fun = @(w,fix)(Screen('FillOval',w,fix.color,fix.coord)); % Draw fixation
-            exp.draw_fun = @(dot,w)(Screen('DrawDots',w,double(dot))); % Draw dots 
-            exp.flip_fun = @(w)(Screen('Flip',w)); % Flip buffer
+            pres.open = @(screen,color,stereo)(Screen('OpenWindow',screen,color,[],[],[],stereo));
+            pres.selectstereo_fun = @(w,stereoselect)(Screen('SelectStereoDrawBuffer', w, stereoselect)); % Select stereo buffer to draw
+            
+            if sys.display.dual
+                pres.fixL_fun = @(w,fix)(Screen('FillOval',w,fix.color,fix.coord(1,:))); % Draw fixation (Left)
+                pres.fixR_fun = @(w,fix)(Screen('FillOval',w,fix.color,fix.coord(2,:))); % Draw fixation (Right)
+            else
+                pres.fix_fun = @(w,fix)(Screen('FillOval',w,fix.color,fix.coord)); % Draw fixation
+            end
+            pres.draw_fun = @(dot,w)(Screen('DrawDots',w,double(dot)')); % Draw dots 
+            pres.blank_fun = @(w,color)(Screen('FillRect',w,color));
+            pres.flip_fun = @(w)(Screen('Flip',w)); % Flip buffer
+            
         end
         
     end

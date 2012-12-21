@@ -5,6 +5,20 @@ Random Dot Kinetogram Project - PSU, SLEIC, Gilmore Lab
 
 Author: Ken Hwang
 
+12/21/12
+
+Implemented timer object.
+	- start_fcn: Blank Screen > Key press > Fixation > Key press
+	- timer_fcn: Cycles through dot display.  Still need to advance trials.
+	- stop_fcn: Screen Close all.  Need to move this to error_fcn for response abort.
+Added pres property structure.
+Saving entire obj structure to file (method: saveToStruct).  Added display to wait.
+
+ToDo:
+- Add object properties to advance through trials.
+- Enable response while loop and key press abort (current stop_fcn).
+- Data logging and output.
+
 12/19/12
 
 Added temporary solution to radial dot recycling.  Need to talk to Rick for better algorithm.
