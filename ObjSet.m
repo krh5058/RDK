@@ -6,8 +6,6 @@ classdef ObjSet < handle
         exp % Experimental parameter settings
         pres % Presentation Properties
         out = []; % Output recording
-        block_count = 1; % Block counter
-        trial_count = 1; % Trial counter
         gen_times = []; % Calculated generation times
         t % Timer object
     end
@@ -21,15 +19,16 @@ classdef ObjSet < handle
             obj.dotStore = cell([exp.trial_n exp.block]);
             warning('off','MATLAB:TIMER:RATEPRECISION');
             obj.t = timer('StartFcn',@(x,y)obj.start_fcn, ...
-                'TimerFcn',@(x,y)obj.timer_fcn, ...
+                'TimerFcn',@(x,y)obj.timer_fcn(obj.pres.block_count,obj.pres.trial_count), ...
                 'StopFcn',@(x,y)obj.stop_fcn, ...
+                'ErrorFcn',@(x,y)obj.err_fcn, ...
                 'TasksToExecute',obj.exp.fr, ... 
                 'Period',obj.sys.display.ifi, ...
                 'ExecutionMode','fixedRate');
         end
         
         function dotout = DotGen(obj) % DotGen method
-            if obj.trial_count <= obj.exp.trial_n % Fail-safe
+            if obj.exp.trial_count <= obj.exp.trial_n % Fail-safe
                 dot = zeros([obj.exp.dot.n 2]); % Pre-allocate dot array for new generation
                 dot(:,1) = rand([obj.exp.dot.n 1])*(obj.exp.dot.field(3)-obj.exp.dot.field(1)) + ones([obj.exp.dot.n 1])*obj.exp.dot.field(1); % X coordinates (pix)
                 dot(:,2) = rand([obj.exp.dot.n 1])*(obj.exp.dot.field(4)-obj.exp.dot.field(2)) + ones([obj.exp.dot.n 1])*obj.exp.dot.field(2); % Y coordinates (pix)
@@ -40,8 +39,8 @@ classdef ObjSet < handle
                     pattern = obj.exp.pattern{randi([1 length(obj.exp.pattern)])}; % Randomly generate pattern type
                 end % End while
                 
-                obj.out{end+1,1} = obj.block_count; % Block count
-                obj.out{end,2} = obj.trial_count; % Trial count
+                obj.out{end+1,1} = obj.exp.block_count; % Block count
+                obj.out{end,2} = obj.exp.trial_count; % Trial count
                 obj.out{end,3} = pattern; % Pattern type
                 obj.out{end,4} = obj.exp.(pattern).coh(obj.exp.(pattern).count,1); % Left Coherence
                 obj.out{end,5} = obj.exp.(pattern).coh(obj.exp.(pattern).count,2); % Right Coherence
@@ -148,21 +147,21 @@ classdef ObjSet < handle
                         dotout(1:size(dot(r_ind,:),1),1:size(dot(r_ind,:),2),ii,i) = dot(r_ind,:); % Place 2-D array within frame and stereo index
                     end
                 end
-                obj.dotStore{obj.trial_count,obj.block_count} = dotout; % Save to dotStore property
+                obj.dotStore{obj.exp.trial_count,obj.exp.block_count} = dotout; % Save to dotStore property
                 obj.exp.(pattern).count = obj.exp.(pattern).count + 1; % Add to pattern count
-                obj.trial_count = obj.trial_count + 1; % Add to trial count
+                obj.exp.trial_count = obj.exp.trial_count + 1; % Add to trial count
             end
         end
             
-        function batchDot(obj)
+        function batchDot(obj) % batchDot method
             
             for i = 1:obj.exp.block
-                obj.block_count = i; % Setting block count
+                obj.exp.block_count = i; % Setting block count
                 obj.trialDot;
                 
                 % Resetting count values (trial_count and pattern type
                 % counts)
-                obj.trial_count = 1;
+                obj.exp.trial_count = 1;
                 for j = 1:length(obj.exp.pattern)
                     pattern = obj.exp.pattern{j};
                     obj.exp.(pattern).count = 1;
@@ -173,22 +172,22 @@ classdef ObjSet < handle
             
         end
         
-        function trialDot(obj)
-            if obj.trial_count <= obj.exp.trial_n
-                fprintf('RDK: Populating block %i trial %i ... \n',obj.block_count,obj.trial_count); % Reporting block and trial count
+        function trialDot(obj) % trialDot method
+            if obj.exp.trial_count <= obj.exp.trial_n
+                fprintf('RDK: Populating block %i trial %i ... \n',obj.exp.block_count,obj.exp.trial_count); % Reporting block and trial count
                 if ~isempty(obj.gen_times) % Reporting time remaining estimate based on previous trial generation time estimate
-                    trial_remaining = ((obj.exp.block - obj.block_count)*obj.exp.trial_n) + (obj.exp.trial_n - obj.trial_count + 1);
+                    trial_remaining = ((obj.exp.block - obj.exp.block_count)*obj.exp.trial_n) + (obj.exp.trial_n - obj.exp.trial_count + 1);
                     time_remaining = trial_remaining * mean(obj.gen_times);
                     fprintf('RDK: Estimated time remaining = %4.2f sec (%2.1f min). \n', time_remaining, time_remaining/60);
                 end
-                tic;
+                tic; % Recording generation time
                 obj.DotGen;
                 obj.gen_times = [obj.gen_times toc]; % Accumulating trial generation times
                 obj.trialDot; % Recursive call
             end
         end
     
-        function saveToStruct(obj, filename)
+        function saveToStruct(obj, filename) % saveToStruct method
             varname = inputname(1);
             props = properties(obj);
             for p = 1:numel(props)
@@ -196,10 +195,18 @@ classdef ObjSet < handle
             end
             eval([varname ' = s;'])
             fprintf('RDK: Saving object structure.  One moment ... \n');
-            save(filename, varname)
+            try
+                save(filename, varname)
+            catch
+                save(filename, varname, '-v7.3') % Different mat version save due to memory issues (Not fully tested)
+            end
         end
         
-        function start_fcn(obj)
+        function start_fcn(obj) % start_fcn method for timer
+            % This function is used to display a black screen, wait for key
+            % board press, display fixation dot, and wait for keyboard
+            % press.  It will accomodate if the fixation needs to be drawn
+            % in stereo or non-stereo mode.
             if obj.sys.display.dual
                 obj.pres.blank_fun(obj.sys.display.w,obj.sys.display.black );
                 obj.pres.flip_fun(obj.sys.display.w);
@@ -219,19 +226,36 @@ classdef ObjSet < handle
                 KbStrokeWait;
                 obj.pres.flip_fun(obj.sys.display.w);
             end
+            fprintf('RDK: Initiating trial %i of block %i.\n',obj.pres.trial_count,obj.pres.block_count); % Reporting start of display sequence
+            obj.t.UserData = GetSecs; % Logging start time into UserData timer property
         end
         
-        function timer_fcn(obj)
+        function timer_fcn(obj,b,t) % timer_fcn method for timer
+            % This function is used to cycle through frames for the
+            % respective dot array.  It will accomodate for whether the
+            % dots need to be displayed in stereo mode or not (Only the
+            % first set within the 4-D matrix of dots will appear if
+            % non-stereo mode is selected.
             if obj.t.TasksExecuted < obj.exp.fr
-                obj.pres.draw_fun(obj.dotStore{1,1}(:,:,obj.t.TasksExecuted+1,1),obj.sys.display.w);
-                obj.pres.selectstereo_fun(obj.sys.display.w,1);
-                obj.pres.draw_fun(obj.dotStore{1,1}(:,:,obj.t.TasksExecuted+1,2),obj.sys.display.w);
-                obj.pres.flip_fun(obj.sys.display.w);
+                if obj.sys.display.dual
+                    obj.pres.draw_fun(obj.dotStore{b,t}(:,:,obj.t.TasksExecuted+1,1),obj.sys.display.w);
+                    obj.pres.selectstereo_fun(obj.sys.display.w,1);
+                    obj.pres.draw_fun(obj.dotStore{b,t}(:,:,obj.t.TasksExecuted+1,2),obj.sys.display.w);
+                    obj.pres.flip_fun(obj.sys.display.w);
+                else
+                    obj.pres.draw_fun(obj.dotStore{b,t}(:,:,obj.t.TasksExecuted+1,1),obj.sys.display.w);
+                    obj.pres.flip_fun(obj.sys.display.w);
+                end
             end
         end
                 
-        function stop_fcn(obj)
+        function err_fcn(obj) % err_fcn method for timer
+            fprintf('RDK: Aborting ...\n');
             Screen('CloseAll');
+        end
+
+        function stop_fcn(obj) % stop_fcn method for timer
+            fprintf('RDK: Finished trial %i of block %i.\n',obj.pres.trial_count,obj.pres.block_count); % Reporting end of display sequence
         end
         
     end
@@ -329,6 +353,8 @@ classdef ObjSet < handle
             exp.ppf  = exp.v * sys.display.ppd / sys.display.fps; % Dot speed (pix/frame)
             exp.trial_n = length(exp.pattern) * length(exp.coherence) * (2*exp.reverse); % Number of trials per block
             exp.trial_total = exp.trial_n * exp.block; % Total amount of trials
+            exp.block_count = 1; % Block counter
+            exp.trial_count = 1; % Trial counter
             presmat = [zeros([length(exp.coherence) 1]) exp.coherence']; % Constructing presentation matrix
             if exp.reverse
                 presmat = [presmat; [presmat(:,2) presmat(:,1)]];  % Include reversed eyes
@@ -403,6 +429,9 @@ classdef ObjSet < handle
         end
         
         function pres = PresSet(sys)
+            % Presentation count properties
+            pres.block_count = 1;
+            pres.trial_count = 1;
             
             % Presentation function handles
             pres.open = @(screen,color,stereo)(Screen('OpenWindow',screen,color,[],[],[],stereo));
