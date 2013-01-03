@@ -6,6 +6,8 @@ classdef ObjSet < handle
         exp % Experimental parameter settings
         pres % Presentation Properties
         out = []; % Output recording
+        start_key; % Keys to restrict to during start_fcn
+        timer_key; % Keys to restrict to during timer_fcn
         gen_times = []; % Calculated generation times
         t % Timer object
     end
@@ -17,12 +19,14 @@ classdef ObjSet < handle
             obj.exp = exp;
             obj.pres = pres;
             obj.dotStore = cell([exp.trial_n exp.block]);
-            warning('off','MATLAB:TIMER:RATEPRECISION');
+        end
+        
+        function tGen(obj) % Timer class constructor
             obj.t = timer('StartFcn',@(x,y)obj.start_fcn, ...
                 'TimerFcn',@(x,y)obj.timer_fcn(obj.pres.block_count,obj.pres.trial_count), ...
                 'StopFcn',@(x,y)obj.stop_fcn, ...
                 'ErrorFcn',@(x,y)obj.err_fcn, ...
-                'TasksToExecute',obj.exp.fr, ... 
+                'TasksToExecute',obj.exp.fr, ...
                 'Period',obj.sys.display.ifi, ...
                 'ExecutionMode','fixedRate');
         end
@@ -190,11 +194,13 @@ classdef ObjSet < handle
         function saveToStruct(obj, filename) % saveToStruct method
             varname = inputname(1);
             props = properties(obj);
+%             meths = methods(obj);
+%             find(cellfun(@(y2)(~isempty(y2)),cellfun(@(y)(regexp(y,'fcn')),meths,'UniformOutput',false)))
             for p = 1:numel(props)
                 s.(props{p})=obj.(props{p});
             end
             eval([varname ' = s;'])
-            fprintf('RDK: Saving object structure.  One moment ... \n');
+            fprintf('RDK: Saving object structure (%s).  One moment ... \n', obj.exp.objpath);
             try
                 save(filename, varname)
             catch
@@ -207,6 +213,7 @@ classdef ObjSet < handle
             % board press, display fixation dot, and wait for keyboard
             % press.  It will accomodate if the fixation needs to be drawn
             % in stereo or non-stereo mode.
+            RestrictKeysForKbCheck(obj.start_key);
             if obj.sys.display.dual
                 obj.pres.blank_fun(obj.sys.display.w,obj.sys.display.black );
                 obj.pres.flip_fun(obj.sys.display.w);
@@ -234,23 +241,24 @@ classdef ObjSet < handle
             % This function is used to cycle through frames for the
             % respective dot array.  It will accomodate for whether the
             % dots need to be displayed in stereo mode or not (Only the
-            % first set within the 4-D matrix of dots will appear if
+            % first set (left side) within the 4-D matrix of dots will appear if
             % non-stereo mode is selected.
+            RestrictKeysForKbCheck(obj.timer_key);
             if obj.t.TasksExecuted < obj.exp.fr
                 if obj.sys.display.dual
-                    obj.pres.draw_fun(obj.dotStore{b,t}(:,:,obj.t.TasksExecuted+1,1),obj.sys.display.w);
+                    obj.pres.draw_fun(obj.dotStore{t,b}(:,:,obj.t.TasksExecuted+1,1),obj.sys.display.w);
                     obj.pres.selectstereo_fun(obj.sys.display.w,1);
-                    obj.pres.draw_fun(obj.dotStore{b,t}(:,:,obj.t.TasksExecuted+1,2),obj.sys.display.w);
+                    obj.pres.draw_fun(obj.dotStore{t,b}(:,:,obj.t.TasksExecuted+1,2),obj.sys.display.w);
                     obj.pres.flip_fun(obj.sys.display.w);
                 else
-                    obj.pres.draw_fun(obj.dotStore{b,t}(:,:,obj.t.TasksExecuted+1,1),obj.sys.display.w);
+                    obj.pres.draw_fun(obj.dotStore{t,b}(:,:,obj.t.TasksExecuted+1,1),obj.sys.display.w);
                     obj.pres.flip_fun(obj.sys.display.w);
                 end
             end
         end
                 
         function err_fcn(obj) % err_fcn method for timer
-            fprintf('RDK: Aborting ...\n');
+            fprintf('RDK: Error. Aborting ...\n');
             Screen('CloseAll');
         end
 
