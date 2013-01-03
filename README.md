@@ -5,6 +5,23 @@ Random Dot Kinetogram Project - PSU, SLEIC, Gilmore Lab
 
 Author: Ken Hwang
 
+1/3/13
+
+-Working on wrapper script: rdkMain
+	- ‘prepare’: Allow’s for multiple batchDot runs.  Must specify number of iterations.  No presentation will occur
+	- ‘newrun’: Perform batchDot and begin trial run.
+	- ‘oldload’: Run a pre-existing set of dots.  New object definition is required and property specification.  Must pick from file directory.
+- Space key has been restricted for start_fcn.
+- Esc key, Left Arrow key, and Right Arrow key have been restricted for timer function.
+- Fixed a bug where block and trial indexing from dotStore was reversed.
+- Move timer object generation as it’s own method -- tGen.  Can be used to create timer object property in obj at any point, so that window pointer can vary and not produce errors in old timer object callback functions.
+- Fixed escaping.  Does not use error(), but rather an esc_flag to exit both sets of for loops (block + trial).
+-”out.csv” now goes to the appropriate exp directory.
+
+ToDo:
+-Noticed an issue with delayed keyboard response at times.  Should not be a large issue, but will look into it.
+-Add ListenChar(2) when ready.
+
 12/21/12
 
 Implemented timer object.
