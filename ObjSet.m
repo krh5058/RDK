@@ -34,9 +34,13 @@ classdef ObjSet < handle
         function dotout = DotGen(obj) % DotGen method
             if obj.exp.trial_count <= obj.exp.trial_n % Fail-safe
                 dot = zeros([obj.exp.dot.n 2]); % Pre-allocate dot array for new generation
-                dot(:,1) = rand([obj.exp.dot.n 1])*(obj.exp.dot.field(3)-obj.exp.dot.field(1)) + ones([obj.exp.dot.n 1])*obj.exp.dot.field(1); % X coordinates (pix)
-                dot(:,2) = rand([obj.exp.dot.n 1])*(obj.exp.dot.field(4)-obj.exp.dot.field(2)) + ones([obj.exp.dot.n 1])*obj.exp.dot.field(2); % Y coordinates (pix)
+                dot(:,1) = rand([obj.exp.dot.n 1])*(obj.exp.dot.field(3)-obj.exp.dot.field(1)) + ones([obj.exp.dot.n 1])*obj.exp.dot.field(1); % Random X coordinates (pix) of size obj.exp.dot.n
+                dot(:,2) = rand([obj.exp.dot.n 1])*(obj.exp.dot.field(4)-obj.exp.dot.field(2)) + ones([obj.exp.dot.n 1])*obj.exp.dot.field(2); % Random Y coordinates (pix) of size obj.exp.dot.n
                 dot = single(dot); % Convert to single precision
+                
+                cohort = zeros([length(dot)]);% Preallocate cohort, which will contain cohort values associated with dot indices in 'dot'
+                cohort_n = round(length(dot)/obj.exp.dotlifetime); % Size of dot cohort
+                cohort = repmat(0:obj.exp.dotlifetime-1,[cohort_n 1]); % Assigning cohort value
                 
                 pattern = obj.exp.pattern{randi([1 length(obj.exp.pattern)])}; % Randomly generate pattern type
                 while obj.exp.(pattern).count > length(obj.exp.(pattern).coh) % Check if count has been reached for this pattern
@@ -52,7 +56,15 @@ classdef ObjSet < handle
                 dotout = single(zeros([obj.exp.dot.n_masked 2 obj.exp.fr 2])); % Estimate of number dots for preallocation [x y frame stereo]
                 
                 for i = 1:1+obj.sys.display.dual % For each stereo display
-                    for ii = 1:obj.exp.fr % For each frame 
+                    for ii = 1:obj.exp.fr % For each frame
+                        % Select dots to refresh (if cohort value has
+                        % reached 0)
+                        dotrefresh_i = find(~cohort); % Select dots that have reached end of lifetime (if 0)                        
+                        dot(dotrefresh_i,1) = rand([cohort_n 1])*(obj.exp.dot.field(3)-obj.exp.dot.field(1)) + ones([cohort_n 1])*obj.exp.dot.field(1); % Random X coordinates (pix) of size cohort_n
+                        dot(dotrefresh_i,2) = rand([cohort_n 1])*(obj.exp.dot.field(4)-obj.exp.dot.field(2)) + ones([cohort_n 1])*obj.exp.dot.field(2); % Random Y coordinates (pix) of size cohort_n
+                        cohort(dotrefresh_i) = obj.exp.dotlifetime; % Reset those selected dots to maximum dot lifetime
+                        cohort = cohort-1; % Count down one lifetime across array
+                        
                         % Direction reversals
                         fr_in_cycle = mod( ii, obj.sys.display.fps*obj.exp.dutycycle ); % Current frame within duty cycle
                         if fr_in_cycle == 1 % If current frame is first in the duty cycle
@@ -112,16 +124,16 @@ classdef ObjSet < handle
                                 rlo = r < obj.exp.mask.annulus_pix(1) - obj.exp.mask.annulus_buffer_pix;
                                 if any(rhi)
                                     if (obj.exp.mask.annulus_pix(1) - obj.exp.mask.annulus_buffer_pix) > 0
-                                        r(rhi) = obj.exp.mask.annulus_pix(1) - obj.exp.mask.annulus_buffer_pix; % Bring back to inner + buffer
+                                        r(rhi) = obj.exp.mask.annulus_pix(1) - obj.exp.mask.annulus_buffer_pix; % Bring back to inner - buffer
                                     else
-                                        r(rhi) = 0;
+                                        r(rhi) = 0; % Set radius to 0
                                     end
                                 end
                                 if any(rlo)
                                     r(rlo) = obj.exp.mask.annulus_pix(2) + obj.exp.mask.annulus_buffer_pix; % Bring to out + buffer
                                 end
-                                dot(:,1) = (r.*cos( t ))+obj.sys.display.center(1);
-                                dot(:,2) = (r.*sin( t ))+obj.sys.display.center(2);
+                                dot(:,1) = (r.*cos( t ))+obj.sys.display.center(1); % Convert back to x coordinates
+                                dot(:,2) = (r.*sin( t ))+obj.sys.display.center(2); % Convert back to y coordinates
                                 
                             case 'linear'
                                 xlo = find(dot(:,1) <= obj.exp.dot.field(1)); % X < XMin
@@ -143,11 +155,12 @@ classdef ObjSet < handle
                                 end
                         end
                         
-                        % Mask
+                        % Mask (does not change dot matrix)
                         r = sqrt((dot(:,1) - obj.sys.display.center(1)).^2 + (dot(:,2) - obj.sys.display.center(2)).^2); % Determine radii in polar space
                         r_ind = (r >= obj.exp.mask.annulus_pix(1)) & (r <= obj.exp.mask.annulus_pix(2)); % Index of dots after mask
                         
-                        % Output
+                        % Output (Only record dot positions, not cohort
+                        % index)
                         dotout(1:size(dot(r_ind,:),1),1:size(dot(r_ind,:),2),ii,i) = dot(r_ind,:); % Place 2-D array within frame and stereo index
                     end
                 end
@@ -351,11 +364,12 @@ classdef ObjSet < handle
             exp.block = 5; % Number of blocks
             exp.trial_t = 10; % Trial duration (sec)
             exp.fr = sys.display.fps*exp.trial_t; % Frames total
-            exp.reverse = 1; % Reverse sides
+            exp.reverse = 1; % Reverse sides (1/0)
             exp.pattern = {'radial','linear'}; % Pattern conditions
             exp.coherence = [.05 .1 .15 .2]; % Coherence conditions
 %              exp.coherence = [.5 .6 .7 .8]; % Coherence conditions
             exp.v = 2; % Dot speed (deg/sec)
+            exp.dotlifetime = 10; % Frame life of dots
             exp.dutycycle = .25; % Phase (default is 4-phase==.25) 
             exp.drctn = 1; % 1/-1 for direction reversal
             exp.ppf  = exp.v * sys.display.ppd / sys.display.fps; % Dot speed (pix/frame)
@@ -438,8 +452,8 @@ classdef ObjSet < handle
         
         function pres = PresSet(sys)
             % Presentation count properties
-            pres.block_count = 1;
-            pres.trial_count = 1;
+            pres.block_count = [];
+            pres.trial_count = [];
             
             % Presentation function handles
             pres.open = @(screen,color,stereo)(Screen('OpenWindow',screen,color,[],[],[],stereo));
