@@ -5,6 +5,41 @@ Random Dot Kinetogram Project - PSU, SLEIC, Gilmore Lab
 
 Author: Ken Hwang
 
+1/9/13
+
+Added dot lifetime to dot creation.  Default 10s.
+Fixed response output to correctly include no response trials.
+
+ToDo:
+Query function (Ask prior to run if want to log): Birthdate (convert to weeks), Testdate, Sex, Acuity (Report?), Stereo Acuity, Binocular
+Option: Persistent fixation
+Format: YYYYMMDD_HHMM
+Ask for input for session time.
+Add headers.
+Allow for escape during start_fcn.
+Issue after 10s run, loss of control? (Has not reoccured.  Must have been due to ctrl-c)
+
+1/7/13
+
+Query function (Ask prior to run if want to log): Birthdate (convert to weeks), Testdate, Sex, Acuity (Report?), Stereo Acuity, Binocular
+Option: Persistent fixation
+Format: YYYYMMDD_HHMM
+Ask for input for session time.
+Add headers.
+Allow for escape during start_fcn.
+Issue after 10s run, loss of control?
+
+Dot Lifetime:
+- Birthdate, death date
+- For example. 
+
+1/4/13
+
+Format: YYYYMMDD_HHMM
+Ask for input for session time.
+Add headers.
+Allow for escape during start_fcn.
+
 1/3/13
 
 -Working on wrapper script: rdkMain
