@@ -221,6 +221,13 @@ classdef ObjSet < handle
             end
         end
         
+        function begin_fcn(obj) % Beginning display function
+            obj.pres.txt_size_fun(obj.sys.display.temp_w,obj.pres.txt_val);
+            obj.pres.txt_fun(obj.pres.txt,obj.sys.display.temp_w,obj.sys.display.white);
+            obj.pres.flip_fun(obj.sys.display.temp_w);
+            KbStrokeWait;
+        end
+        
         function start_fcn(obj) % start_fcn method for timer
             % This function is used to display a black screen, wait for key
             % board press, display fixation dot, and wait for keyboard
@@ -228,22 +235,57 @@ classdef ObjSet < handle
             % in stereo or non-stereo mode.
             RestrictKeysForKbCheck(obj.start_key);
             if obj.sys.display.dual
+                % Blank screen
                 obj.pres.blank_fun(obj.sys.display.w,obj.sys.display.black );
                 obj.pres.flip_fun(obj.sys.display.w);
-                KbStrokeWait;
-                obj.pres.fixL_fun(obj.sys.display.w,obj.exp.fix);
-                obj.pres.selectstereo_fun(obj.sys.display.w,1);
-                obj.pres.fixR_fun(obj.sys.display.w,obj.exp.fix);
+                % Key wait, escape status noted
+                [~,keyCode,~] = KbStrokeWait;
+                if find(keyCode) == obj.start_key(end)
+                    obj.pres.esc_flag = 1;
+                    stop(obj.t)
+                    return;
+                end
+                % Fixation
+                if obj.exp.fix.status
+                    obj.pres.fixL_fun(obj.sys.display.w,obj.exp.fix);
+                    obj.pres.selectstereo_fun(obj.sys.display.w,1);
+                    obj.pres.fixR_fun(obj.sys.display.w,obj.exp.fix);
+                end
                 obj.pres.flip_fun(obj.sys.display.w);
-                KbStrokeWait;
+                % Key wait, escape status noted
+                [~,keyCode,~] = KbStrokeWait;
+                if find(keyCode) == obj.start_key(end)
+                    obj.pres.esc_flag = 1;
+                    stop(obj.t)
+                    return;
+                end
+                % Blank Screen
                 obj.pres.flip_fun(obj.sys.display.w);
             else
+                
                 obj.pres.blank_fun(obj.sys.display.w,obj.sys.display.black );
                 obj.pres.flip_fun(obj.sys.display.w);
-                KbStrokeWait;
-                obj.pres.fix_fun(obj.sys.display.w,obj.exp.fix);
+                
+                [~,keyCode,~] = KbStrokeWait;
+                if find(keyCode) == obj.start_key(end)
+                    obj.pres.esc_flag = 1;
+                    stop(obj.t)
+                    return;
+                end
+                
+                if obj.exp.fix.status
+                    obj.pres.fix_fun(obj.sys.display.w,obj.exp.fix);
+                end
+                
                 obj.pres.flip_fun(obj.sys.display.w);
-                KbStrokeWait;
+                
+                [~,keyCode,~] = KbStrokeWait;
+                if find(keyCode) == obj.start_key(end)
+                    obj.pres.esc_flag = 1;
+                    stop(obj.t)
+                    return;
+                end
+                
                 obj.pres.flip_fun(obj.sys.display.w);
             end
             fprintf('RDK: Initiating trial %i of block %i.\n',obj.pres.trial_count,obj.pres.block_count); % Reporting start of display sequence
@@ -262,9 +304,18 @@ classdef ObjSet < handle
                     obj.pres.draw_fun(obj.dotStore{t,b}(:,:,obj.t.TasksExecuted+1,1),obj.sys.display.w);
                     obj.pres.selectstereo_fun(obj.sys.display.w,1);
                     obj.pres.draw_fun(obj.dotStore{t,b}(:,:,obj.t.TasksExecuted+1,2),obj.sys.display.w);
+                    if obj.exp.fix.pers_fix % If persistent fixation
+                        obj.pres.selectstereo_fun(obj.sys.display.w,0);
+                        obj.pres.fixL_fun(obj.sys.display.w,obj.exp.fix);
+                        obj.pres.selectstereo_fun(obj.sys.display.w,1);
+                        obj.pres.fixR_fun(obj.sys.display.w,obj.exp.fix);
+                    end
                     obj.pres.flip_fun(obj.sys.display.w);
                 else
                     obj.pres.draw_fun(obj.dotStore{t,b}(:,:,obj.t.TasksExecuted+1,1),obj.sys.display.w);
+                    if obj.exp.pers_fix
+                        obj.pres.fix_fun(obj.sys.display.w,obj.exp.fix);
+                    end
                     obj.pres.flip_fun(obj.sys.display.w);
                 end
             end
@@ -353,11 +404,11 @@ classdef ObjSet < handle
             
         end
         
-        function exp = ExpSet(sys)
+        function exp = ExpSet(sys,subjstr)
             % Path
             path = mfilename('fullpath');
             [exp.path,~,~] = fileparts(path);
-            exp.objpath = [exp.path filesep 'exp' filesep datestr(now,30)];
+            exp.objpath = [exp.path filesep 'exp' filesep subjstr];
             mkdir(exp.objpath);
 
             % General Experimental Parameters
@@ -392,7 +443,12 @@ classdef ObjSet < handle
             exp.mask.area = outerA - innerA; % Total area (pixels)
                 
             % Fixation Parameters
-            exp.fix = 1; % Fixation on or off (0/1)
+            exp.fix.status = 1; % Fixation on or off (0/1)
+            if exp.fix.status
+                exp.fix.pers_fix = 1; % Persistent fixation (0/1)
+            else
+                exp.fix.pers_fix = 0; % Persistent fixation off if no fixation
+            end
             exp.fix.size_deg = .15; % Fixation size in degrees
             exp.fix.size_pix = exp.fix.size_deg*sys.display.ppd; % Fixation size in pixels
             exp.fix.color = sys.display.white; % Fixation color (default white)
@@ -455,6 +511,13 @@ classdef ObjSet < handle
             pres.block_count = [];
             pres.trial_count = [];
             
+            % Presentation escape property
+            pres.esc_flag = 0;
+            
+            % Presentation text
+            pres.txt_val = 22;
+            pres.txt = 'Motion coherence discrimination task.\n\n\n  Press spacebar to begin.';
+            
             % Presentation function handles
             pres.open = @(screen,color,stereo)(Screen('OpenWindow',screen,color,[],[],[],stereo));
             pres.selectstereo_fun = @(w,stereoselect)(Screen('SelectStereoDrawBuffer', w, stereoselect)); % Select stereo buffer to draw
@@ -465,6 +528,8 @@ classdef ObjSet < handle
             else
                 pres.fix_fun = @(w,fix)(Screen('FillOval',w,fix.color,fix.coord)); % Draw fixation
             end
+            pres.txt_size_fun = @(w,size)(Screen('TextSize',w,size)); % Formats text size for screen
+            pres.txt_fun = @(txt,w,color)(DrawFormattedText(w,txt,'center','center',color)); % Display text (in center)
             pres.draw_fun = @(dot,w)(Screen('DrawDots',w,double(dot)')); % Draw dots 
             pres.blank_fun = @(w,color)(Screen('FillRect',w,color));
             pres.flip_fun = @(w)(Screen('Flip',w)); % Flip buffer

@@ -5,9 +5,23 @@ Random Dot Kinetogram Project - PSU, SLEIC, Gilmore Lab
 
 Author: Ken Hwang
 
+1/10/13
+
+-Added persistent fixation to timer_fcn and exp.fix property.
+-Added user input for testdate and testtime for cases prepare and newrun.  Also added error displays for when these values are input incorrectly.
+-Added headers to out.csv.
+-Allowed for escape during start_fcn.
+-Added begin_fcn which executes pres.txt_size_fcn and pres.txt_fcn.  Also, added pres.txt_val property.  ‘begin_fcn’ method is used to display text on an introductory screen (separate from testing) using the txt* function handles.  The txt* function handles set up DrawText parameters and draws introductory text to screen.  To be used prior to presentation execution.
+-Modified script due to performance issues when pressing button responses.  Now, program appropriately advances screen draw upon key press.
+
+ToDo:
+	Move script to function.
+	Uncomment ListenChar(2).
+Separate query function (Ask prior to run if want to log): Birthdate (convert to weeks), Testdate, Sex, Acuity (Report?), Stereo Acuity, Binocular
+
 1/9/13
 
-Added dot lifetime to dot creation.  Default 10s.
+Added dot lifetime to dot creation.  Default 10 frames.
 Fixed response output to correctly include no response trials.
 
 ToDo:
