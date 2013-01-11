@@ -5,6 +5,15 @@ Random Dot Kinetogram Project - PSU, SLEIC, Gilmore Lab
 
 Author: Ken Hwang
 
+1/11/13
+
+-Script is ready for field testing.
+-Uncommented ListenChar(2).
+-Moved to function.
+
+ToDo:
+Separate query function (Ask prior to run if want to log): Birthdate (convert to weeks), Testdate, Sex, Acuity (Report?), Stereo Acuity, Binocular
+
 1/10/13
 
 -Added persistent fixation to timer_fcn and exp.fix property.

@@ -1,4 +1,4 @@
-varpick = 'newrun';
+function rdkMain(varpick)
 
 warning('off','MATLAB:TIMER:RATEPRECISION');
 % Error displays
@@ -68,7 +68,7 @@ switch varpick
             
         end
         return; % Exit script
-    
+        
     case 'newrun'
         % User input
         testdate = input('RDK: Enter testing date (YYYYMMDD):','s');
@@ -120,10 +120,10 @@ switch varpick
         fprintf('RDK: Loading object (%s).  One moment.\n', [p f]); % Report
         old_instance = load([p f]);
         old_strval = fieldnames(old_instance);
-%         
-%         % Screen set-up
-%         obj.sys.display.w = obj.pres.open(eval([oldstrval{1} '.sys.display.screenNumber']),eval([old_strval{1} '.sys.display.black']),eval([old_strval{1} '.sys.display.stereo'])); % Open Window
-%         
+        %
+        %         % Screen set-up
+        %         obj.sys.display.w = obj.pres.open(eval([oldstrval{1} '.sys.display.screenNumber']),eval([old_strval{1} '.sys.display.black']),eval([old_strval{1} '.sys.display.stereo'])); % Open Window
+        %
         % Object definition
         obj = ObjSet(eval(['old_instance.' old_strval{1} '.sys']),eval(['old_instance.' old_strval{1} '.exp']),eval(['old_instance.' old_strval{1} '.pres']));
         obj.dotStore = old_instance.(old_strval{1}).dotStore;
@@ -132,20 +132,20 @@ switch varpick
     otherwise
         
         error('RDK: Invalid option.')
-      
+        
 end
 
 % Initialization
 PsychJavaTrouble();
 addpath(obj.exp.path); % Add path
 KbName('UnifyKeyNames'); % Unify keys
-spkey = KbName('Space'); 
+spkey = KbName('Space');
 esckey = KbName('Escape');
 lkey = KbName('LeftArrow');
 rkey = KbName('RightArrow');
 obj.start_key = [spkey esckey]; % Define start_fcn keys in obj properties
 obj.timer_key = [lkey rkey esckey]; % Define timer_fcn keys in obj properties
-% ListenChar(2);
+ListenChar(2);
 HideCursor;
 
 % Output Setup
@@ -228,3 +228,5 @@ cell2csv([obj.exp.objpath filesep 'out.csv'],[out_h; out]); % Write output
 Screen('CloseAll');
 ListenChar(0);
 ShowCursor;
+
+end
