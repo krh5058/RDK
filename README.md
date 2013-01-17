@@ -5,6 +5,19 @@ Random Dot Kinetogram Project - PSU, SLEIC, Gilmore Lab
 
 Author: Ken Hwang
 
+1/17/13
+
+Time/date verification seems okay.
+Documented ObjSet.m and rdkMain.m.
+Rearranged contents of while loop in rdkMain.m for processing purposes, but it seems like the delay in press is primarily due to the while loop’s interaction with the timer object.  This may be unavoidable and a firm, prolonged press until black screen may be necessary for advancement of trial.
+
+1/16/13
+
+Verify time checking.
+Fixed typo line 26 (rdkMain.m): ‘date’ > ‘time’
+Keys changed to Z and /?.
+Expect 2nd testing keyboard.
+
 1/11/13
 
 -Script is ready for field testing.

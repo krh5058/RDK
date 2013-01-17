@@ -1,5 +1,77 @@
 classdef ObjSet < handle
+    % RDK Object Class
+    % 1/17/13
+    % Ken R. Hwang, M.S. & Rick O. Gilmore, Ph.D.
+    % Penn State Brain Development Lab, SLEIC, PSU
     %
+    % ObjSet is responsible for constructing the main class behind the RDK
+    % experiment, instances of which (obj) will contain property
+    % substructures: sys, exp, and pres. 'sys' contains system information
+    % determined prior to instantiation.  'exp' contains experimental
+    % parameters, a handful of which can be modified.  'pres' contains
+    % properties that consist primarily of function handles utilized during
+    % dot display.
+    %
+    % ObjSet also houses many methods.  The class constructor, which is
+    % called within the main function rdkMain.m, sets the substructure
+    % properties to the instance of class ObjSet.  During dot generation,
+    % methods -- batchDot, trialDot, DotGen, and saveToStruct -- are
+    % called.  batchDot is simply a 'for' loop that executes trialDot for
+    % the number of block iterations.  trialDot is responsible for
+    % reporting the block and trial iteration as well as estimated dot
+    % generation time remaining (based on the previous trial generation
+    % time).  In addition, trialDot calls DotGen -- the heart of the dot
+    % generation process, and recursively calls itself until trial length
+    % is reached. After every trial is generated, batchDot will call method
+    % saveToStruct to save the newly created object with dot matrices to
+    % the appropriate subject directory.
+    %
+    % DotGen: By utilizing, the dot matrix transformation algorithms
+    % (represented as function handles in substructure exp), experimental
+    % coherence matrix, and various experimental parameters (lifetime,
+    % frames, phase duration, display dimensions, mask parameters, etc.)
+    % DotGen will produce dot arrays (xy-coordinates) for every
+    % frame and for each side of the display (if sys.display.dual is TRUE).
+    %  It will also follow the experimental design structure by
+    % appropriately displaying one of every coherence condition, for every
+    % pattern type, for each side of the display.  Coherence condition is
+    % defined as: the fraction of dots within the entire matrix that will
+    % be transformed according to the respective pattern type.  As far as
+    % the design of this experiment goes, only one side (if
+    % sys.display.dual is TRUE) will be applicable for a coherence
+    % condition.  The opposing side of the same trial will always be
+    % entirely incoherent (random).  Other than applying motion gradients
+    % to these dot arrays, DotGen also applies a dot lifetime to sections
+    % of dots defined as "cohorts".  This means that after a certain
+    % number of frames (specified by obj.exp.dotlifetime), a given cohort
+    % of dots within the array will be re-randomized.  DotGen also
+    % performs a bounds check and masking on the dots to ensure that dots
+    % remain within exp.dot.field and only those that fall within the
+    % parameters for exp.mask are displayed on screen.  The block, trial,
+    % pattern type, left coherence, and right coherence are appended to
+    % obj.out for this trial's dot set.  Lastly, the dots are filed into
+    % dotStore -- a cell property for class ObjSet.
+    %
+    % Prior to the display sequence, screen handling and dot drawing
+    % functions are also handled by class ObjSet.  To begin, an instance of
+    % ObjSet will require a window pointer, w, as defined by PsychToolbox's
+    % "Screen('OpenWindow')" function.  Afterwards, method tGen is called
+    % to generate a timer object responsible for displaying dots within
+    % obj.dotStore at a determined framerate.  The timer object can do this
+    % by relying on ObjSet's method, timer_fcn. Like with DotGen, timer_fcn
+    % performs screen functionality through function handles defined in the
+    % 'pres' substructure.  Prior to each dot display is a blank screen and
+    % a fixation screen, and this is performed by start_fcn, which also
+    % depends on function_handles within 'pres'.  After each trial,
+    % stop_fcn will report the trial and block that was just displayed by
+    % the timer object. Thus, the timer object (obj.t) will cycle through
+    % each block and trial displaying each frame within dotStore.  To
+    % determine which doy array within dotStore is used, however, obj.t
+    % depends solely on counters within 'pres': block_count and
+    % trial_count. Consequently, rdkMain.m is able to have obj.t cycle by
+    % updated these count parameters within 'for' loop for blocks and a
+    % nested 'for' loop for trials.  Two other methods, begin_fcn and
+    % err_fcn, are used by rdkMain.m and debugging, respectively.
     properties (SetObservable)
         dotStore  % Dot storage
         sys % System settings

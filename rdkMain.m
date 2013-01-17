@@ -1,4 +1,31 @@
 function rdkMain(varpick)
+% Primary RDK function for loading parameters, displaying dots, recording
+% behavioral response, and writing output.
+%
+% 1/17/13
+% Ken R. Hwang, M.S. & Rick O. Gilmore, Ph.D.
+% Penn State Brain Development Lab, SLEIC, PSU
+%
+% usage: rdkMain(option)
+%   options: 'prepare','newrun', 'oldload' (Note: arguments must be
+%   surrounded by single quotes)
+%   
+%   prepare: Will request number of iterations and subject testing date and
+%   time.  This option will allow the user to prepare, in advance, a
+%   certain number of dot displays.
+%
+%   newrun: Will run one iteration of dot generation, then advance directly
+%   into dot display.  This option should be used if no dots have been
+%   pre-generated, and you require a dot set for a current experimental
+%   session.
+%
+%   oldload: Does not execute dot generation, but will request an old
+%   'obj.mat' to be loaded so that it can begin dot display.  This option
+%   is for when there are pre-generated dots available for a current
+%   experimental session.  Be aware that the output, out.csv, is written
+%   exclusively to the subject folder.  So, if you have an old out.csv in
+%   that subject folder that you would like to keep, backup the old out.csv
+%   and/or subject folder before running 'oldload'.
 
 warning('off','MATLAB:TIMER:RATEPRECISION');
 % Error displays
@@ -6,7 +33,6 @@ err_disp = {'Test date is not of appropriate length (YYYYMMDD).', ...
     'Test time is not of appropriate length (HHMM).', ...
     'Test date is not numeric.', ...
     'Test time is not numeric.'};
-
 
 switch varpick
     case 'prepare'
@@ -23,7 +49,7 @@ switch varpick
         for i = 1:prepare_n
             % User input
             testdate = input('RDK: Enter testing date (YYYYMMDD):','s');
-            testtime = input('RDK: Enter testing date (HHMM):','s');
+            testtime = input('RDK: Enter testing time (HHMM):','s');
             % String checks
             prep_kick = 0;
             err_h = zeros([1 4]);
@@ -72,7 +98,7 @@ switch varpick
     case 'newrun'
         % User input
         testdate = input('RDK: Enter testing date (YYYYMMDD):','s');
-        testtime = input('RDK: Enter testing date (HHMM):','s');
+        testtime = input('RDK: Enter testing time (HHMM):','s');
         % String checks
         kick = 0;
         err_h = zeros([1 4]);
@@ -141,8 +167,8 @@ addpath(obj.exp.path); % Add path
 KbName('UnifyKeyNames'); % Unify keys
 spkey = KbName('Space');
 esckey = KbName('Escape');
-lkey = KbName('LeftArrow');
-rkey = KbName('RightArrow');
+lkey = KbName('z');
+rkey = KbName('/?');
 obj.start_key = [spkey esckey]; % Define start_fcn keys in obj properties
 obj.timer_key = [lkey rkey esckey]; % Define timer_fcn keys in obj properties
 ListenChar(2);
@@ -170,27 +196,28 @@ obj.pres.esc_flag = 0;
 for block_i = 1:obj.exp.block % For each block
     obj.pres.block_count = block_i; % Changing presentation block_count
     for trial_i = 1:obj.exp.trial_n % For each trial
+        
         obj.pres.trial_count = trial_i; % Changing presentation trial_count
-        keyFlag = 1; % Key flag to prevent multiple press entries
         resp = ' '; % Reset response
         respchk = []; % Reset response accuracy check index
         keyCode = []; % Reset keyCode
         start(obj.t); % Start timer
+        
         while strcmp(obj.t.Running,'on') % While the timer is running
-            if keyFlag
-                [keyIsDown,secs,keyCode] = KbCheck;
-                if keyIsDown
-                    stop(obj.t)
-                    keyFlag = 0;
-                    if find(keyCode) == esckey % If escape
-                        obj.pres.esc_flag = 1;
-                        fprintf('RDK: Aborting display sequence. \n');
-                        Screen('CloseAll');
-                    end
-                end
+            [keyIsDown,secs,keyCode] = KbCheck;
+            if keyIsDown
+                break;
             end
         end
-        if obj.pres.esc_flag
+        stop(obj.t); % Stop timer
+        
+        % Response handling
+        if find(keyCode) == esckey % If escape
+            obj.pres.esc_flag = 1;
+            fprintf('RDK: Aborting display sequence. \n');
+            Screen('CloseAll');
+        end
+        if obj.pres.esc_flag % Abort
             break;
         end
         if find(keyCode) == lkey % If left arrow press
@@ -200,21 +227,22 @@ for block_i = 1:obj.exp.block % For each block
             resp = 'R';
             respchk = 2;
         end
+        
         % Logging output
         nextcell = find(cellfun(@isempty,out(:,size(obj.out,2)+1)),1); % Next empty cell
         out{nextcell,size(obj.out,2)+1} = resp; % Log response
-        if regexp(resp,'\s')
+        if regexp(resp,'\s') % Check if whitespace
             out{nextcell,size(obj.out,2)+2} = 0; % No RT if no response
         else
             out{nextcell,size(obj.out,2)+2} = secs - obj.t.UserData; % Log RT
         end
-        if isempty(respchk)
+        if isempty(respchk) % Check if still empty
             out{nextcell,size(obj.out,2)+3} = 0; % Miss if respchk is empty (no response)
         else
             out{nextcell,size(obj.out,2)+3} = LRkey(nextcell,respchk); % Log LRkey entry
         end
     end
-    if obj.pres.esc_flag
+    if obj.pres.esc_flag % Abort
         break;
     end
 end
