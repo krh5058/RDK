@@ -5,6 +5,81 @@ Random Dot Kinetogram Project - PSU, SLEIC, Gilmore Lab
 
 Author: Ken Hwang
 
+2/18/13
+
+Added inter-annulus distance calculations within exp.mask, adjusts dot.field(1:2,:)
+dot.field is 2x4 now.
+dot.field_area adjusted accordingly
+Fixed bug in lin2 function, changed length() to size().
+Randomization and cohort selection within ‘i’ iteration of DotGen.
+
+2/13/13
+
+- Updated BiRi laptop with current version (not final).
+- FrameRate function for screen does not work for laptop, using 60 Hz default instead.
+- Adjusted annulus scale to [1 3.5] for now.
+
+2/12/13
+
+- Single/dual display both tested as of current build
+- Added exp.coh_mod_fr (default 1.2 Hz)
+- Used to calculate exp.fpc (1/coh_mod_fr *fps) -- frames per cycle (Default is 50 frames)
+- exp.fpc is used during modulation check
+- Coherency mod check at duty cycle.
+- Direction reversal mod check at 2x duty cycle.
+- Using floor() for coh (50*.25) is not a full integer
+- Must use floor() for both, or will be offphase.
+- Added obj.exp.cohflag, which will bypass coherency dot parsing if 0.  Constructs empty obj.exp.coh and passes the entirety of dot to dotparsed.
+- Adjusted the calculation of trial_n to accurately account of reversal flag.
+- exp.reverse is automatically set to 0 if not dual.
+- Fixed an issue with single display.  Issue was due to improper variable reference (pers_fix).
+- Modified presmat and out cell to not include an extra column if single display.
+- Accounted for extra frames, adds required frames to exp.fr (lines 500-502), Needs testing
+- Removed all button press logging during single display.
+- Changed trial iterating into a while loop to accommodate for trial restarts.
+- Added ‘p’ for trial restart key.  If ‘p’ is pressed no logging takes place.
+
+ToDo:
+- Running into some memory issues when issuing multiple runs during one matlab session
+- Need to scale according to screen resolution.  How much?
+- Movie capture.
+- Accounted for extra frames, adds required frames to exp.fr (lines 500-502), Needs testing
+
+2/5/13
+
+New RDK assessment:
+- Restart trial option
+- Need 1.2 Hz coherency modulation
+	- Needs to complete last cycle even if total frames is reached
+- Needs single display compatibility.
+	- pers.fix
+	- coherence matrix.
+	- annulus scaling
+	- output
+- Needs movie capture.
+	- Needs development on PC for capture
+	- Capture movies
+
+2/5/13
+
+Old RDK accounts for 1.2 Hz global frequency.
+	- time_mod_period_fr = 50, this is the calculation of (1/1.2Hz)  * (60 frames/s)
+	- Two mod tests: 
+- First one is for direction reversal: rdkShowStimuli, lines 157-168
+	- Tests only if 4-phase.
+	- Tests against time_mod_period_fr*2 (50*2 = 100).
+	- Multiplied by 2 becaulsse 100 frames constitutes two cycles. (Coherent + incoherent, first direction; Coherent + incoherent, second direction.).  
+- switchFlag tests if the modulo of frame against time_mod_period*2 is greater than time_mod_period_fr.  Switches if it is.  So, frames 1-50 are one direction and frames 51-100 are another.  
+- Second test is for coherence/incoherence modulation: rdkComputeGradient, lines 25-52.
+-First, arrive at modulo of frame against time_mod_period_fr
+-Then, determine if greater than time_mod_period_fr * time_mod_duty_cycle.
+- Duty cycle, in this case is .5, which refers to on/off coherency phase.
+- Direction reversals is one order higher than duty cycle.
+- So, in this example, coherency changes every 25 frames and direction changes every 50 frames.  This is correct.
+
+
+=======
+>>>>>>> parent of 015531f... 2/12/13 Build -- See ReadMe.md
 1/17/13
 
 Time/date verification seems okay.

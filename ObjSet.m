@@ -104,16 +104,7 @@ classdef ObjSet < handle
         end
         
         function dotout = DotGen(obj) % DotGen method
-            if obj.exp.trial_count <= obj.exp.trial_n % Fail-safe
-                dot = zeros([obj.exp.dot.n 2]); % Pre-allocate dot array for new generation
-                dot(:,1) = rand([obj.exp.dot.n 1])*(obj.exp.dot.field(3)-obj.exp.dot.field(1)) + ones([obj.exp.dot.n 1])*obj.exp.dot.field(1); % Random X coordinates (pix) of size obj.exp.dot.n
-                dot(:,2) = rand([obj.exp.dot.n 1])*(obj.exp.dot.field(4)-obj.exp.dot.field(2)) + ones([obj.exp.dot.n 1])*obj.exp.dot.field(2); % Random Y coordinates (pix) of size obj.exp.dot.n
-                dot = single(dot); % Convert to single precision
-                
-                cohort = zeros([length(dot)]);% Preallocate cohort, which will contain cohort values associated with dot indices in 'dot'
-                cohort_n = round(length(dot)/obj.exp.dotlifetime); % Size of dot cohort
-                cohort = repmat(0:obj.exp.dotlifetime-1,[cohort_n 1]); % Assigning cohort value
-                
+            if obj.exp.trial_count <= obj.exp.trial_n % Fail-safe             
                 pattern = obj.exp.pattern{randi([1 length(obj.exp.pattern)])}; % Randomly generate pattern type
                 while obj.exp.(pattern).count > length(obj.exp.(pattern).coh) % Check if count has been reached for this pattern
                     pattern = obj.exp.pattern{randi([1 length(obj.exp.pattern)])}; % Randomly generate pattern type
@@ -128,21 +119,51 @@ classdef ObjSet < handle
                 dotout = single(zeros([obj.exp.dot.n_masked 2 obj.exp.fr 2])); % Estimate of number dots for preallocation [x y frame stereo]
                 
                 for i = 1:1+obj.sys.display.dual % For each stereo display
+                    dot = zeros([obj.exp.dot.n 2]); % Pre-allocate dot array for new generation
+                    dot(:,1) = rand([obj.exp.dot.n 1])*(obj.exp.dot.field(i,3)-obj.exp.dot.field(i,1)) + ones([obj.exp.dot.n 1])*obj.exp.dot.field(i,1); % Random X coordinates (pix) of size obj.exp.dot.n
+                    dot(:,2) = rand([obj.exp.dot.n 1])*(obj.exp.dot.field(i,4)-obj.exp.dot.field(i,2)) + ones([obj.exp.dot.n 1])*obj.exp.dot.field(i,2); % Random Y coordinates (pix) of size obj.exp.dot.n
+                    dot = single(dot); % Convert to single precision
+                    
+                    cohort = zeros([length(dot)]);% Preallocate cohort, which will contain cohort values associated with dot indices in 'dot'
+                    cohort_n = round(length(dot)/obj.exp.dotlifetime); % Size of dot cohort
+                    cohort = repmat(0:obj.exp.dotlifetime-1,[cohort_n 1]); % Assigning cohort value
                     for ii = 1:obj.exp.fr % For each frame
                         % Select dots to refresh (if cohort value has
                         % reached 0)
                         dotrefresh_i = find(~cohort); % Select dots that have reached end of lifetime (if 0)                        
-                        dot(dotrefresh_i,1) = rand([cohort_n 1])*(obj.exp.dot.field(3)-obj.exp.dot.field(1)) + ones([cohort_n 1])*obj.exp.dot.field(1); % Random X coordinates (pix) of size cohort_n
-                        dot(dotrefresh_i,2) = rand([cohort_n 1])*(obj.exp.dot.field(4)-obj.exp.dot.field(2)) + ones([cohort_n 1])*obj.exp.dot.field(2); % Random Y coordinates (pix) of size cohort_n
+                        dot(dotrefresh_i,1) = rand([cohort_n 1])*(obj.exp.dot.field(i,3)-obj.exp.dot.field(i,1)) + ones([cohort_n 1])*obj.exp.dot.field(i,1); % Random X coordinates (pix) of size cohort_n
+                        dot(dotrefresh_i,2) = rand([cohort_n 1])*(obj.exp.dot.field(i,4)-obj.exp.dot.field(i,2)) + ones([cohort_n 1])*obj.exp.dot.field(i,2); % Random Y coordinates (pix) of size cohort_n
                         cohort(dotrefresh_i) = obj.exp.dotlifetime; % Reset those selected dots to maximum dot lifetime
                         cohort = cohort-1; % Count down one lifetime across array
                         
                         % Direction reversals
-                        fr_in_cycle = mod( ii, obj.sys.display.fps*obj.exp.dutycycle ); % Current frame within duty cycle
+                        fr_in_cycle = mod( ii, obj.exp.fpc*obj.exp.dutycycle ); % Current frame within duty cycle  (Frames per cycle * duty cycle ratio)
                         if fr_in_cycle == 1 % If current frame is first in the duty cycle
                            obj.exp.drctn = -1*obj.exp.drctn; % Change direction
                         end
                         drctn = obj.exp.drctn; % Set drctn variable
+<<<<<<< HEAD
+                        
+                        if obj.exp.cohflag
+                            dotindex = obj.exp.dot.parse(dot,obj.exp.(pattern).coh(obj.exp.(pattern).count,i)); % Use dot.parse to obtain an index of coherently-selected dots
+                            dot_parsed = dot(dotindex,:); % Dot array using index
+                            for iii = 1:length(obj.exp.(pattern).([pattern '_fun']))
+                                f = functions(obj.exp.(pattern).([pattern '_fun']){iii,1}); % Obtain function handle
+                                arglist = regexp(f.function,'[@]{1,1}[(]{1,1}(.*)[)]{1,1}[(]{1,1}','tokens');
+                                arglist = regexp(arglist{1}{1},'[,]','split'); % Obtain arglist
+                                argstr = []; % Preallocate argument string
+                                for iiii = 1:length(arglist) % For each argument
+                                    arglist{iiii} = obj.exp.nomen{strcmp(arglist{iiii},obj.exp.nomen(:,1)),2}; % Rename arglist
+                                    argstr = [argstr ',' arglist{iiii}]; % Construct argstr
+                                end
+                                try
+                                    eval([obj.exp.(pattern).([pattern '_fun']){iii,2} ' = obj.exp.(pattern).([pattern ''_fun'']){iii,1}(' argstr(2:end) ');']); % Evaluate function handle with argstr
+                                catch ME
+                                    disp(pattern)
+                                    disp([obj.exp.(pattern).([pattern '_fun']){iii,2} ' = obj.exp.(pattern).([pattern ''_fun'']){iii,1}(' argstr(2:end) ');'])
+                                    disp(iii)
+                                end
+=======
                         dotindex = obj.exp.dot.parse(dot,obj.exp.(pattern).coh(obj.exp.(pattern).count,i)); % Use dot.parse to obtain an index of coherently-selected dots
                         dot_parsed = dot(dotindex,:); % Dot array using index
                         for iii = 1:length(obj.exp.(pattern).([pattern '_fun'])) 
@@ -153,6 +174,7 @@ classdef ObjSet < handle
                             for iiii = 1:length(arglist) % For each argument
                                 arglist{iiii} = obj.exp.nomen{strcmp(arglist{iiii},obj.exp.nomen(:,1)),2}; % Rename arglist
                                 argstr = [argstr ',' arglist{iiii}]; % Construct argstr
+>>>>>>> parent of 015531f... 2/12/13 Build -- See ReadMe.md
                             end
                             eval([obj.exp.(pattern).([pattern '_fun']){iii,2} ' = obj.exp.(pattern).([pattern ''_fun'']){iii,1}(' argstr(2:end) ');']); % Evaluate function handle with argstr
                         end
@@ -208,22 +230,22 @@ classdef ObjSet < handle
                                 dot(:,2) = (r.*sin( t ))+obj.sys.display.center(2); % Convert back to y coordinates
                                 
                             case 'linear'
-                                xlo = find(dot(:,1) <= obj.exp.dot.field(1)); % X < XMin
-                                xhi = find(dot(:,1) >= obj.exp.dot.field(3)); % X > XMax
-                                ylo = find(dot(:,2) <= obj.exp.dot.field(2)); % Y < YMin
-                                yhi = find(dot(:,2) >= obj.exp.dot.field(4)); % Y > YMax
+                                xlo = find(dot(:,1) <= obj.exp.dot.field(i,1)); % X < XMin
+                                xhi = find(dot(:,1) >= obj.exp.dot.field(i,3)); % X > XMax
+                                ylo = find(dot(:,2) <= obj.exp.dot.field(i,2)); % Y < YMin
+                                yhi = find(dot(:,2) >= obj.exp.dot.field(i,4)); % Y > YMax
                                 
                                 if any(xlo)
-                                    dot(xlo,1) = obj.exp.dot.field(3) - (obj.exp.dot.field(1) - dot(xlo,1)); % Shifting X coordinates from left of dot field to left of right side of dot field
+                                    dot(xlo,1) = obj.exp.dot.field(i,3) - (obj.exp.dot.field(i,1) - dot(xlo,1)); % Shifting X coordinates from left of dot field to left of right side of dot field
                                 end
                                 if any(xhi)
-                                    dot(xhi,1) = obj.exp.dot.field(1) + (dot(xhi,1) - obj.exp.dot.field(3)); % Shifting X coordinates from right of dot field to right of left side of dot field
+                                    dot(xhi,1) = obj.exp.dot.field(i,1) + (dot(xhi,1) - obj.exp.dot.field(i,3)); % Shifting X coordinates from right of dot field to right of left side of dot field
                                 end
                                 if any(ylo)
-                                    dot(ylo,2) = obj.exp.dot.field(4) - (obj.exp.dot.field(2) - dot(ylo,2)); % Shifting Y coordinates from below dot field to below top of dot field
+                                    dot(ylo,2) = obj.exp.dot.field(i,4) - (obj.exp.dot.field(i,2) - dot(ylo,2)); % Shifting Y coordinates from below dot field to below top of dot field
                                 end
                                 if any(yhi)
-                                    dot(yhi,2) = obj.exp.dot.field(2) + (dot(yhi,2) - obj.exp.dot.field(4)); % Shifting Y coordinates from above dot field to above bottom of dot field
+                                    dot(yhi,2) = obj.exp.dot.field(i,2) + (dot(yhi,2) - obj.exp.dot.field(i,4)); % Shifting Y coordinates from above dot field to above bottom of dot field
                                 end
                         end
                         
@@ -385,7 +407,7 @@ classdef ObjSet < handle
                     obj.pres.flip_fun(obj.sys.display.w);
                 else
                     obj.pres.draw_fun(obj.dotStore{t,b}(:,:,obj.t.TasksExecuted+1,1),obj.sys.display.w);
-                    if obj.exp.pers_fix
+                    if obj.exp.fix.pers_fix
                         obj.pres.fix_fun(obj.sys.display.w,obj.exp.fix);
                     end
                     obj.pres.flip_fun(obj.sys.display.w);
@@ -447,7 +469,7 @@ classdef ObjSet < handle
             
             [sys.display.width_pix, sys.display.height_pix]=Screen('WindowSize', sys.display.screenNumber); % Screen dimensions in pixels
             
-            sys.display.dual = 1; % Dual screen (0/1)
+            sys.display.dual = 0; % Dual screen (0/1)
             sys.display.width_pix_full = sys.display.width_pix; % Full width (pix)
             sys.display.width_pix_half = sys.display.width_pix_full/2; % Halve width (pix)
             
@@ -470,6 +492,10 @@ classdef ObjSet < handle
             
             sys.display.view_dist_cm = 60; % View distance (variable)
             sys.display.fps = Screen('FrameRate', sys.display.screenNumber); % Frame rate (hz)
+            if ~sys.display.fps
+                sys.display.fps = 60;
+            end
+            
             sys.display.ifi = 1/sys.display.fps; % Inverse frame rate
             
             sys.display.ppd = pi * (sys.display.width_pix) / atan(sys.display.width_cm/sys.display.view_dist_cm/2) / 180; % Pixels per degree
@@ -487,13 +513,15 @@ classdef ObjSet < handle
             exp.block = 5; % Number of blocks
             exp.trial_t = 10; % Trial duration (sec)
             exp.fr = sys.display.fps*exp.trial_t; % Frames total
+            exp.coh_mod_fr = 1; % 1.2 Hz frequency
+            exp.fpc = (1/exp.coh_mod_fr) * sys.display.fps;
             exp.reverse = 1; % Reverse sides (1/0)
             exp.pattern = {'radial','linear'}; % Pattern conditions
             exp.coherence = [.05 .1 .15 .2]; % Coherence conditions
 %              exp.coherence = [.5 .6 .7 .8]; % Coherence conditions
             exp.v = 2; % Dot speed (deg/sec)
             exp.dotlifetime = 10; % Frame life of dots
-            exp.dutycycle = .25; % Phase (default is 4-phase==.25) 
+            exp.dutycycle = .25; % Phase (default is 4-phase==.25; 4-phase includes direction reversals and coherency modulation 
             exp.drctn = 1; % 1/-1 for direction reversal
             exp.ppf  = exp.v * sys.display.ppd / sys.display.fps; % Dot speed (pix/frame)
             exp.trial_n = length(exp.pattern) * length(exp.coherence) * (2*exp.reverse); % Number of trials per block
@@ -506,9 +534,33 @@ classdef ObjSet < handle
             end
 
             % Mask Constraint Parameters
-            exp.mask.annulus_deg = [2 5]; % Annulus radius minimum and maximum (deg)
+            exp.mask.annulus_deg = [1 4]; % Annulus radius minimum and maximum (deg)
             exp.mask.annulus_buffer_deg = 1; % Buffer radius to be recycled
             exp.mask.annulus_pix = exp.mask.annulus_deg * sys.display.ppd; % Annulus radius minimum and maximum (pix)
+            exp.mask.adj_flag = 0;
+            if sys.display.dual
+                exp.mask.extra_w = (sys.display.rect(3) - exp.mask.annulus_pix(2)*2)/2; % Amount of width left on one side of annulus, (Also default distance from center).
+                exp.mask.interannulus_deg = (exp.mask.extra_w*2)/sys.display.ppd; % Degrees distance between annuluses outer radii
+                if exp.mask.interannulus_deg < 5
+                    fprintf('RDK: Warning! Inter-annulus degree is less than 5 (%2.4f).\n', exp.mask.interannulus_deg)
+                    exp.mask.offset_deg = 5 - exp.mask.interannulus_deg;
+                    exp.mask.offset_pix = exp.mask.offset_deg*sys.display.ppd;
+                    exp.mask.extra_w_with_offset = (sys.display.center(1) - exp.mask.annulus_pix(2)) - exp.mask.offset_pix;
+                    if exp.mask.extra_w_with_offset < 0
+                        fprintf('RDK: Warning! Unable to adjust inter-annulus degree to greater than 5.  \nPixel offset is greater than available pixel width space (%4.4f > %4.4f).\n',exp.mask.offset_pix, (sys.display.center(1) - exp.mask.annulus_pix(2)))
+                        fprintf('RDK: Consider reducing outer annulus radius (Currently, %2.1f degrees).\n', exp.mask.annulus_deg(2));
+                    else
+                        fprintf('RDK: Adjusted inter-annulus degree to 5.  This will increase the distance between the left and right annuluses.\n');
+                        exp.mask.adj_flag = 1;
+                    end
+                elseif exp.mask.interannulus_deg > 10
+                    fprintf('RDK: Warning! Inter-annulus degree is greater than 10 (%2.4f).\n', exp.mask.interannulus_deg)
+                    exp.mask.offset_deg = exp.mask.interannulus_deg - 10;
+                    exp.mask.offset_pix = exp.mask.offset_deg*sys.display.ppd;
+                    fprintf('RDK: Adjusted inter-annulus degree to 10.  This will decrease the distance between the left and right annuluses.\n');
+                    exp.mask.adj_flag = -1;
+                end
+            end
             exp.mask.annulus_buffer_pix = exp.mask.annulus_buffer_deg * sys.display.ppd; % Buffer radius (pix)
             outerA = pi*exp.mask.annulus_pix(2)^2;
             innerA = pi*exp.mask.annulus_pix(1)^2;
@@ -537,8 +589,19 @@ classdef ObjSet < handle
             exp.dot.dens = .15; % Dot density fraction
             exp.dot.size_deg = .1; % Dot size (deg)
             exp.dot.size_pix = round(exp.dot.size_deg * sys.display.ppd); % Dot size (pix)
-            exp.dot.field = [(sys.display.center(1) - exp.mask.annulus_pix(2)) (sys.display.center(2) - exp.mask.annulus_pix(2)) (sys.display.center(1) + exp.mask.annulus_pix(2)) (sys.display.center(2) + exp.mask.annulus_pix(2)) ]; % Dot field (pix)
-            exp.dot.field_area = (exp.dot.field(3) - exp.dot.field(1))*(exp.dot.field(4) - exp.dot.field(2));
+            if exp.mask.adj_flag % Have to make two dot fields now, because of interannulus distance
+                if exp.mask.adj_flag < 0
+                    exp.dot.field(1,:) = [((sys.display.center(1) - exp.mask.annulus_pix(2))-exp.mask.offset_pix) (sys.display.center(2) - exp.mask.annulus_pix(2)) ((sys.display.center(1) + exp.mask.annulus_pix(2))-exp.mask.offset_pix) (sys.display.center(2) + exp.mask.annulus_pix(2)) ]; % Dot field (pix)
+                    exp.dot.field(2,:) = [((sys.display.center(1) - exp.mask.annulus_pix(2))+exp.mask.offset_pix) (sys.display.center(2) - exp.mask.annulus_pix(2)) ((sys.display.center(1) + exp.mask.annulus_pix(2))+exp.mask.offset_pix) (sys.display.center(2) + exp.mask.annulus_pix(2)) ]; % Dot field (pix)
+                else
+                    exp.dot.field(1,:) = [((sys.display.center(1) - exp.mask.annulus_pix(2))+exp.mask.offset_pix) (sys.display.center(2) - exp.mask.annulus_pix(2)) ((sys.display.center(1) + exp.mask.annulus_pix(2))+exp.mask.offset_pix) (sys.display.center(2) + exp.mask.annulus_pix(2)) ]; % Dot field (pix)
+                    exp.dot.field(2,:) = [((sys.display.center(1) - exp.mask.annulus_pix(2))-exp.mask.offset_pix) (sys.display.center(2) - exp.mask.annulus_pix(2)) ((sys.display.center(1) + exp.mask.annulus_pix(2))-exp.mask.offset_pix) (sys.display.center(2) + exp.mask.annulus_pix(2)) ]; % Dot field (pix)
+                end
+            else
+                exp.dot.field(1,:) = [(sys.display.center(1) - exp.mask.annulus_pix(2)) (sys.display.center(2) - exp.mask.annulus_pix(2)) (sys.display.center(1) + exp.mask.annulus_pix(2)) (sys.display.center(2) + exp.mask.annulus_pix(2)) ]; % Dot field (pix)
+                exp.dot.field(2,:) = [(sys.display.center(1) - exp.mask.annulus_pix(2)) (sys.display.center(2) - exp.mask.annulus_pix(2)) (sys.display.center(1) + exp.mask.annulus_pix(2)) (sys.display.center(2) + exp.mask.annulus_pix(2)) ]; % Dot field (pix)
+            end
+            exp.dot.field_area = (exp.dot.field(1,3) - exp.dot.field(1,1))*(exp.dot.field(1,4) - exp.dot.field(1,2));
             exp.dot.n = round( exp.dot.dens/(exp.dot.size_pix^2) * exp.dot.field_area ); % Number of dots for field
             exp.dot.prop = exp.mask.area/exp.dot.field_area; % Proportion of mask area relative to dot field
             exp.dot.n_masked = round(exp.dot.n*exp.dot.prop); % Number of estimated dots in masked area
@@ -552,7 +615,7 @@ classdef ObjSet < handle
                     case 'linear' % Linear function handles
                         exp.(exp.pattern{p}).dir_rads = pi/2; % Horizontal
                         lin1 = @(rad,ppf)([cos(rad) sin(rad)]*ppf); % Motion vector (exp.linear.dir_rads,exp.ppf)
-                        lin2 = @(mot,dot,drctn)(dot + (repmat(mot, [length(dot) 1]) .* [repmat(drctn, [length(dot) 1]) repmat(drctn, [length(dot) 1])])); % New dot vector (output from lin1, dot vector, 1/-1)
+                        lin2 = @(mot,dot,drctn)(dot + (repmat(mot, [size(dot,1) 1]) .* [repmat(drctn, [size(dot,1) 1]) repmat(drctn, [size(dot,1) 1])])); % New dot vector (output from lin1, dot vector, 1/-1)
                         exp.(exp.pattern{p}).linear_fun = {lin1, 'mot'; lin2, 'newdot'}; % Function handles and expected output
                     case 'radial' % Radial function handles
                         rad1 = @(dot)(atan2(dot(:,2)-sys.display.center(2),dot(:,1)-sys.display.center(1))); % Calculate theta (Dot array), relative to center
