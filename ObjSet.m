@@ -104,7 +104,7 @@ classdef ObjSet < handle
         end
         
         function dotout = DotGen(obj) % DotGen method
-            if obj.exp.trial_count <= obj.exp.trial_n % Fail-safe             
+            if obj.exp.trial_count <= obj.exp.trial_n % Fail-safe
                 pattern = obj.exp.pattern{randi([1 length(obj.exp.pattern)])}; % Randomly generate pattern type
                 while obj.exp.(pattern).count > length(obj.exp.(pattern).coh) % Check if count has been reached for this pattern
                     pattern = obj.exp.pattern{randi([1 length(obj.exp.pattern)])}; % Randomly generate pattern type
@@ -114,7 +114,9 @@ classdef ObjSet < handle
                 obj.out{end,2} = obj.exp.trial_count; % Trial count
                 obj.out{end,3} = pattern; % Pattern type
                 obj.out{end,4} = obj.exp.(pattern).coh(obj.exp.(pattern).count,1); % Left Coherence
-                obj.out{end,5} = obj.exp.(pattern).coh(obj.exp.(pattern).count,2); % Right Coherence
+                if obj.sys.display.dual
+                    obj.out{end,5} = obj.exp.(pattern).coh(obj.exp.(pattern).count,2); % Right Coherence
+                end
                 
                 dotout = single(zeros([obj.exp.dot.n_masked 2 obj.exp.fr 2])); % Estimate of number dots for preallocation [x y frame stereo]
                 
@@ -130,19 +132,22 @@ classdef ObjSet < handle
                     for ii = 1:obj.exp.fr % For each frame
                         % Select dots to refresh (if cohort value has
                         % reached 0)
-                        dotrefresh_i = find(~cohort); % Select dots that have reached end of lifetime (if 0)                        
+                        dotrefresh_i = find(~cohort); % Select dots that have reached end of lifetime (if 0)
                         dot(dotrefresh_i,1) = rand([cohort_n 1])*(obj.exp.dot.field(i,3)-obj.exp.dot.field(i,1)) + ones([cohort_n 1])*obj.exp.dot.field(i,1); % Random X coordinates (pix) of size cohort_n
                         dot(dotrefresh_i,2) = rand([cohort_n 1])*(obj.exp.dot.field(i,4)-obj.exp.dot.field(i,2)) + ones([cohort_n 1])*obj.exp.dot.field(i,2); % Random Y coordinates (pix) of size cohort_n
                         cohort(dotrefresh_i) = obj.exp.dotlifetime; % Reset those selected dots to maximum dot lifetime
                         cohort = cohort-1; % Count down one lifetime across array
                         
-                        % Direction reversals
-                        fr_in_cycle = mod( ii, obj.exp.fpc*obj.exp.dutycycle ); % Current frame within duty cycle  (Frames per cycle * duty cycle ratio)
+                        % Direction/Coherency reversals
+                        fr_in_cycle = mod( ii, floor(obj.exp.fpc*obj.exp.dutycycle*2) ); % Current frame within duty cycle  (Frames per cycle * duty cycle ratio)
                         if fr_in_cycle == 1 % If current frame is first in the duty cycle
-                           obj.exp.drctn = -1*obj.exp.drctn; % Change direction
+                            obj.exp.drctn = -1*obj.exp.drctn; % Change direction
+                        end
+                        fr_in_cohcycle = mod( ii, floor(obj.exp.fpc*obj.exp.dutycycle) ); % Current frame within duty cycle  (Frames per cycle * duty cycle ratio)
+                        if fr_in_cohcycle == 1 % If current frame is first in the duty cycle
+                            obj.exp.cohflag = ~obj.exp.cohflag; % Change coherency
                         end
                         drctn = obj.exp.drctn; % Set drctn variable
-<<<<<<< HEAD
                         
                         if obj.exp.cohflag
                             dotindex = obj.exp.dot.parse(dot,obj.exp.(pattern).coh(obj.exp.(pattern).count,i)); % Use dot.parse to obtain an index of coherently-selected dots
@@ -163,23 +168,14 @@ classdef ObjSet < handle
                                     disp([obj.exp.(pattern).([pattern '_fun']){iii,2} ' = obj.exp.(pattern).([pattern ''_fun'']){iii,1}(' argstr(2:end) ');'])
                                     disp(iii)
                                 end
-=======
-                        dotindex = obj.exp.dot.parse(dot,obj.exp.(pattern).coh(obj.exp.(pattern).count,i)); % Use dot.parse to obtain an index of coherently-selected dots
-                        dot_parsed = dot(dotindex,:); % Dot array using index
-                        for iii = 1:length(obj.exp.(pattern).([pattern '_fun'])) 
-                            f = functions(obj.exp.(pattern).([pattern '_fun']){iii,1}); % Obtain function handle
-                            arglist = regexp(f.function,'[@]{1,1}[(]{1,1}(.*)[)]{1,1}[(]{1,1}','tokens'); 
-                            arglist = regexp(arglist{1}{1},'[,]','split'); % Obtain arglist
-                            argstr = []; % Preallocate argument string
-                            for iiii = 1:length(arglist) % For each argument
-                                arglist{iiii} = obj.exp.nomen{strcmp(arglist{iiii},obj.exp.nomen(:,1)),2}; % Rename arglist
-                                argstr = [argstr ',' arglist{iiii}]; % Construct argstr
->>>>>>> parent of 015531f... 2/12/13 Build -- See ReadMe.md
                             end
-                            eval([obj.exp.(pattern).([pattern '_fun']){iii,2} ' = obj.exp.(pattern).([pattern ''_fun'']){iii,1}(' argstr(2:end) ');']); % Evaluate function handle with argstr
+                            cohdot = newdot; % Coherent dot array
+                            dot_parsed = dot(~dotindex,:); % Dot array of previously unselected dots
+                        else
+                            cohdot = []; % Empty dot array
+                            dot_parsed = dot; % Dot array is entire dot vector
                         end
-                        cohdot = newdot; % Coherent dot array
-                        dot_parsed = dot(~dotindex,:); % Dot array of previously unselected dots
+                        
                         for jjj = 1:length(obj.exp.random_fun) % For each function handle
                             f = functions(obj.exp.random_fun{jjj,1}); % Obtain function handle
                             arglist = regexp(f.function,'[@]{1,1}[(]{1,1}(.*)[)]{1,1}[(]{1,1}','tokens');
@@ -263,7 +259,7 @@ classdef ObjSet < handle
                 obj.exp.trial_count = obj.exp.trial_count + 1; % Add to trial count
             end
         end
-            
+        
         function batchDot(obj) % batchDot method
             
             for i = 1:obj.exp.block
@@ -297,12 +293,12 @@ classdef ObjSet < handle
                 obj.trialDot; % Recursive call
             end
         end
-    
+        
         function saveToStruct(obj, filename) % saveToStruct method
             varname = inputname(1);
             props = properties(obj);
-%             meths = methods(obj);
-%             find(cellfun(@(y2)(~isempty(y2)),cellfun(@(y)(regexp(y,'fcn')),meths,'UniformOutput',false)))
+            %             meths = methods(obj);
+            %             find(cellfun(@(y2)(~isempty(y2)),cellfun(@(y)(regexp(y,'fcn')),meths,'UniformOutput',false)))
             for p = 1:numel(props)
                 s.(props{p})=obj.(props{p});
             end
@@ -414,24 +410,24 @@ classdef ObjSet < handle
                 end
             end
         end
-                
+        
         function err_fcn(obj) % err_fcn method for timer
             fprintf('RDK: Error. Aborting ...\n');
             Screen('CloseAll');
         end
-
+        
         function stop_fcn(obj) % stop_fcn method for timer
             fprintf('RDK: Finished trial %i of block %i.\n',obj.pres.trial_count,obj.pres.block_count); % Reporting end of display sequence
         end
         
     end
-
+    
     methods (Static)
         function sys = SysCheck
             
-%             % Set PTB path dependencies
-%             p = pathdef;
-%             matlabpath(p);
+            %             % Set PTB path dependencies
+            %             p = pathdef;
+            %             matlabpath(p);
             
             % Core size
             [~, core_out ] = system('sysctl -n hw.ncpu');
@@ -461,7 +457,7 @@ classdef ObjSet < handle
             sys.buffer = 3*1024*1024*1024; % Buffer size (bytes): 3GB -- Guideline from MathWorks for 32-bit
             
             % Opening multiple labs (default is equal to number of cores
-%             matlabpool;
+            %             matlabpool;
             
             % Display Settings
             sys.display.screens = Screen('Screens'); % Screens available
@@ -508,23 +504,36 @@ classdef ObjSet < handle
             [exp.path,~,~] = fileparts(path);
             exp.objpath = [exp.path filesep 'exp' filesep subjstr];
             mkdir(exp.objpath);
-
+            
             % General Experimental Parameters
             exp.block = 5; % Number of blocks
             exp.trial_t = 10; % Trial duration (sec)
             exp.fr = sys.display.fps*exp.trial_t; % Frames total
             exp.coh_mod_fr = 1; % 1.2 Hz frequency
             exp.fpc = (1/exp.coh_mod_fr) * sys.display.fps;
-            exp.reverse = 1; % Reverse sides (1/0)
+            
+            exframes = mod(exp.fr,exp.fpc);
+            
+            if exframes
+                exp.fr = exp.fr + (exp.fpc - exframes);
+            end                
+            
+            if sys.display.dual             
+                exp.reverse = 1; % Reverse sides (1/0)
+            else
+                exp.reverse = 0; % Reverse sides (1/0)
+            end
+            
             exp.pattern = {'radial','linear'}; % Pattern conditions
             exp.coherence = [.05 .1 .15 .2]; % Coherence conditions
-%              exp.coherence = [.5 .6 .7 .8]; % Coherence conditions
+            %              exp.coherence = [.5 .6 .7 .8]; % Coherence conditions
             exp.v = 2; % Dot speed (deg/sec)
             exp.dotlifetime = 10; % Frame life of dots
-            exp.dutycycle = .25; % Phase (default is 4-phase==.25; 4-phase includes direction reversals and coherency modulation 
-            exp.drctn = 1; % 1/-1 for direction reversal
+            exp.dutycycle = .25; % Phase (default is 4-phase==.25; 4-phase includes direction reversals and coherency modulation
+            exp.drctn = -1; % 1/-1 for direction reversal
+            exp.cohflag = 0; % 0/1 for coherence reversal
             exp.ppf  = exp.v * sys.display.ppd / sys.display.fps; % Dot speed (pix/frame)
-            exp.trial_n = length(exp.pattern) * length(exp.coherence) * (2*exp.reverse); % Number of trials per block
+            exp.trial_n = length(exp.pattern) * length(exp.coherence) * (1 + exp.reverse); % Number of trials per block
             exp.trial_total = exp.trial_n * exp.block; % Total amount of trials
             exp.block_count = 1; % Block counter
             exp.trial_count = 1; % Trial counter
@@ -532,9 +541,9 @@ classdef ObjSet < handle
             if exp.reverse
                 presmat = [presmat; [presmat(:,2) presmat(:,1)]];  % Include reversed eyes
             end
-
+            
             % Mask Constraint Parameters
-            exp.mask.annulus_deg = [1 4]; % Annulus radius minimum and maximum (deg)
+            exp.mask.annulus_deg = [1 3.5]; % Annulus radius minimum and maximum (deg)
             exp.mask.annulus_buffer_deg = 1; % Buffer radius to be recycled
             exp.mask.annulus_pix = exp.mask.annulus_deg * sys.display.ppd; % Annulus radius minimum and maximum (pix)
             exp.mask.adj_flag = 0;
@@ -565,7 +574,7 @@ classdef ObjSet < handle
             outerA = pi*exp.mask.annulus_pix(2)^2;
             innerA = pi*exp.mask.annulus_pix(1)^2;
             exp.mask.area = outerA - innerA; % Total area (pixels)
-                
+            
             % Fixation Parameters
             exp.fix.status = 1; % Fixation on or off (0/1)
             if exp.fix.status
@@ -611,7 +620,7 @@ classdef ObjSet < handle
                 [pres_shuffle1,shufflesort] = Shuffle(presmat(:,1)); % Shuffle first column of pres
                 exp.(exp.pattern{p}).coh = [pres_shuffle1 presmat(shufflesort,2)]; % Reconstruct with sorted second column -- apply to pattern structure
                 exp.(exp.pattern{p}).count = 1; % Initialize count
-                switch exp.pattern{p} 
+                switch exp.pattern{p}
                     case 'linear' % Linear function handles
                         exp.(exp.pattern{p}).dir_rads = pi/2; % Horizontal
                         lin1 = @(rad,ppf)([cos(rad) sin(rad)]*ppf); % Motion vector (exp.linear.dir_rads,exp.ppf)
@@ -638,7 +647,7 @@ classdef ObjSet < handle
             
             % Dot parse function handle
             exp.dot.parse = @(dot,coh)(rand(size(dot(:,1))) < coh); % Variable each call
-
+            
         end
         
         function pres = PresSet(sys)
@@ -665,7 +674,7 @@ classdef ObjSet < handle
             end
             pres.txt_size_fun = @(w,size)(Screen('TextSize',w,size)); % Formats text size for screen
             pres.txt_fun = @(txt,w,color)(DrawFormattedText(w,txt,'center','center',color)); % Display text (in center)
-            pres.draw_fun = @(dot,w)(Screen('DrawDots',w,double(dot)')); % Draw dots 
+            pres.draw_fun = @(dot,w)(Screen('DrawDots',w,double(dot)')); % Draw dots
             pres.blank_fun = @(w,color)(Screen('FillRect',w,color));
             pres.flip_fun = @(w)(Screen('Flip',w)); % Flip buffer
             

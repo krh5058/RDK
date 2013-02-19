@@ -228,28 +228,27 @@ for block_i = 1:obj.exp.block % For each block
         if find(keyCode) == pkey % If 'p'
             trial_i = trial_i - 1; % Revert trial iteration
         else
-            if ~obj.sys.display.dual % Perform logging only if dual
-                if find(keyCode) == lkey % If left arrow press
-                    resp = 'L';
-                    respchk = 1;
-                elseif find(keyCode) == rkey % If right arrow press
-                    resp = 'R';
-                    respchk = 2;
-                end
-                
-                % Logging output
-                nextcell = find(cellfun(@isempty,out(:,size(obj.out,2)+1)),1); % Next empty cell
-                out{nextcell,size(obj.out,2)+1} = resp; % Log response
-                if regexp(resp,'\s') % Check if whitespace
-                    out{nextcell,size(obj.out,2)+2} = 0; % No RT if no response
-                else
-                    out{nextcell,size(obj.out,2)+2} = secs - obj.t.UserData; % Log RT
-                end
-                if isempty(respchk) % Check if still empty
-                    out{nextcell,size(obj.out,2)+3} = 0; % Miss if respchk is empty (no response)
-                else
-                    out{nextcell,size(obj.out,2)+3} = LRkey(nextcell,respchk); % Log LRkey entry
-                end
+            if ~sy
+            if find(keyCode) == lkey % If left arrow press
+                resp = 'L';
+                respchk = 1;
+            elseif find(keyCode) == rkey % If right arrow press
+                resp = 'R';
+                respchk = 2;
+            end
+
+            % Logging output
+            nextcell = find(cellfun(@isempty,out(:,size(obj.out,2)+1)),1); % Next empty cell
+            out{nextcell,size(obj.out,2)+1} = resp; % Log response
+            if regexp(resp,'\s') % Check if whitespace
+                out{nextcell,size(obj.out,2)+2} = 0; % No RT if no response
+            else
+                out{nextcell,size(obj.out,2)+2} = secs - obj.t.UserData; % Log RT
+            end
+            if isempty(respchk) % Check if still empty
+                out{nextcell,size(obj.out,2)+3} = 0; % Miss if respchk is empty (no response)
+            else
+                out{nextcell,size(obj.out,2)+3} = LRkey(nextcell,respchk); % Log LRkey entry
             end
         end
     end
@@ -260,13 +259,7 @@ end
 
 % Output
 fprintf('RDK: Writing data output (%s). \n\n\n', [obj.exp.objpath filesep 'out.csv']);
-
-if obj.sys.display.dual % Different output header information if dual
-    out_h = {'Block','Trial','PatternType','LeftCoh','RightCoh','Response','RT','Acc'};
-else
-    out_h = {'Block','Trial','PatternType','Coh'};
-end
-
+out_h = {'Block','Trial','PatternType','LeftCoh','RightCoh','Response','RT','Acc'};
 cell2csv([obj.exp.objpath filesep 'out.csv'],[out_h; out]); % Write output
 
 % Clean-up

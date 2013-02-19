@@ -5,6 +5,33 @@ Random Dot Kinetogram Project - PSU, SLEIC, Gilmore Lab
 
 Author: Ken Hwang
 
+2/19/13
+
+Re-coded (due to lost 2/12/13 changes):
+- Single/dual display both tested as of current build
+- Added exp.coh_mod_fr (default 1.2 Hz)
+- Used to calculate exp.fpc (1/coh_mod_fr *fps) -- frames per cycle (Default is 50 frames)
+- exp.fpc is used during modulation check
+- Coherency mod check at duty cycle.
+- Direction reversal mod check at 2x duty cycle.
+- Using floor() for coh (50*.25) is not a full integer
+- Must use floor() for both, or will be offphase.
+- Added obj.exp.cohflag, which will bypass coherency dot parsing if 0.  Constructs empty cohdot array and passes the entirety of dot to dotparsed.
+- Adjusted the calculation of trial_n to accurately account of reversal flag.
+- exp.reverse is automatically set to 0 if not dual.
+- Fixed an issue with single display.  Issue was due to improper variable reference (pers_fix).
+- Modified presmat and out cell to not include an extra column if single display.
+- Accounted for extra frames, adds required frames to exp.fr (lines 500-502), Needs testing
+- Removed all button press logging during single display.
+- Changed trial iterating into a while loop to accommodate for trial restarts.
+- Added ‘p’ for trial restart key.  If ‘p’ is pressed no logging takes place.
+
+ToDo:
+- Running into some memory issues when issuing multiple runs during one matlab session
+- Need to scale according to screen resolution.  How much?
+- Movie capture.
+- Accounted for extra frames, adds required frames to exp.fr (lines 500-502), Needs testing
+
 2/18/13
 
 Added inter-annulus distance calculations within exp.mask, adjusts dot.field(1:2,:)
@@ -29,7 +56,7 @@ Randomization and cohort selection within ‘i’ iteration of DotGen.
 - Direction reversal mod check at 2x duty cycle.
 - Using floor() for coh (50*.25) is not a full integer
 - Must use floor() for both, or will be offphase.
-- Added obj.exp.cohflag, which will bypass coherency dot parsing if 0.  Constructs empty obj.exp.coh and passes the entirety of dot to dotparsed.
+- Added obj.exp.cohflag, which will bypass coherency dot parsing if 0.  Constructs empty cohdot array and passes the entirety of dot to dotparsed.
 - Adjusted the calculation of trial_n to accurately account of reversal flag.
 - exp.reverse is automatically set to 0 if not dual.
 - Fixed an issue with single display.  Issue was due to improper variable reference (pers_fix).
