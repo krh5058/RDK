@@ -465,7 +465,7 @@ classdef ObjSet < handle
             
             [sys.display.width_pix, sys.display.height_pix]=Screen('WindowSize', sys.display.screenNumber); % Screen dimensions in pixels
             
-            sys.display.dual = 0; % Dual screen (0/1)
+            sys.display.dual = 1; % Dual screen (0/1)
             sys.display.width_pix_full = sys.display.width_pix; % Full width (pix)
             sys.display.width_pix_half = sys.display.width_pix_full/2; % Halve width (pix)
             
@@ -525,8 +525,8 @@ classdef ObjSet < handle
             end
             
             exp.pattern = {'radial','linear'}; % Pattern conditions
-            exp.coherence = [.05 .1 .15 .2]; % Coherence conditions
-            %              exp.coherence = [.5 .6 .7 .8]; % Coherence conditions
+%             exp.coherence = [.05 .1 .15 .2]; % Coherence conditions
+                         exp.coherence = [.5 .6 .7 .8]; % Coherence conditions
             exp.v = 2; % Dot speed (deg/sec)
             exp.dotlifetime = 10; % Frame life of dots
             exp.dutycycle = .25; % Phase (default is 4-phase==.25; 4-phase includes direction reversals and coherency modulation
@@ -537,9 +537,14 @@ classdef ObjSet < handle
             exp.trial_total = exp.trial_n * exp.block; % Total amount of trials
             exp.block_count = 1; % Block counter
             exp.trial_count = 1; % Trial counter
-            presmat = [zeros([length(exp.coherence) 1]) exp.coherence']; % Constructing presentation matrix
-            if exp.reverse
-                presmat = [presmat; [presmat(:,2) presmat(:,1)]];  % Include reversed eyes
+            
+            if sys.display.dual % Different presmat depending on dual
+                presmat = [zeros([length(exp.coherence) 1]) exp.coherence']; % Constructing presentation matrix
+                if exp.reverse
+                    presmat = [presmat; [presmat(:,2) presmat(:,1)]];  % Include reversed eyes
+                end
+            else
+                presmat = exp.coherence'; % Constructing presentation matrix
             end
             
             % Mask Constraint Parameters
@@ -618,7 +623,11 @@ classdef ObjSet < handle
             % Pattern Parameters
             for p = 1:length(exp.pattern);
                 [pres_shuffle1,shufflesort] = Shuffle(presmat(:,1)); % Shuffle first column of pres
-                exp.(exp.pattern{p}).coh = [pres_shuffle1 presmat(shufflesort,2)]; % Reconstruct with sorted second column -- apply to pattern structure
+                if sys.display.dual
+                    exp.(exp.pattern{p}).coh = [pres_shuffle1 presmat(shufflesort,2)]; % Reconstruct with sorted second column -- apply to pattern structure
+                else
+                    exp.(exp.pattern{p}).coh = pres_shuffle1; % Reconstruct with sorted second column -- apply to pattern structure
+                end
                 exp.(exp.pattern{p}).count = 1; % Initialize count
                 switch exp.pattern{p}
                     case 'linear' % Linear function handles

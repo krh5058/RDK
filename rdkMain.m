@@ -162,7 +162,7 @@ switch varpick
 end
 
 % Initialization
-PsychJavaTrouble();
+% PsychJavaTrouble();
 addpath(obj.exp.path); % Add path
 KbName('UnifyKeyNames'); % Unify keys
 spkey = KbName('Space');
@@ -225,10 +225,11 @@ for block_i = 1:obj.exp.block % For each block
         if obj.pres.esc_flag % Abort
             break;
         end
+        
         if find(keyCode) == pkey % If 'p'
             trial_i = trial_i - 1; % Revert trial iteration
         else
-            if ~obj.sys.display.dual % Perform logging only if dual
+            if obj.sys.display.dual % Perform logging only if dual
                 if find(keyCode) == lkey % If left arrow press
                     resp = 'L';
                     respchk = 1;
@@ -252,6 +253,9 @@ for block_i = 1:obj.exp.block % For each block
                 end
             end
         end
+        
+        trial_i = trial_i + 1; % Add iteration
+        
     end
     if obj.pres.esc_flag % Abort
         break;
