@@ -506,7 +506,7 @@ classdef ObjSet < handle
             mkdir(exp.objpath);
             
             % General Experimental Parameters
-            exp.block = 5; % Number of blocks
+            exp.block = 1; % Number of blocks
             exp.trial_t = 10; % Trial duration (sec)
             exp.fr = sys.display.fps*exp.trial_t; % Frames total
             exp.coh_mod_fr = 1; % 1.2 Hz frequency
@@ -526,7 +526,7 @@ classdef ObjSet < handle
             
             exp.pattern = {'radial','linear'}; % Pattern conditions
 %             exp.coherence = [.05 .1 .15 .2]; % Coherence conditions
-                         exp.coherence = [.5 .6 .7 .8]; % Coherence conditions
+            exp.coherence = [.7 .8 .9]; % Practice Coherence conditions
             exp.v = 2; % Dot speed (deg/sec)
             exp.dotlifetime = 10; % Frame life of dots
             exp.dutycycle = .25; % Phase (default is 4-phase==.25; 4-phase includes direction reversals and coherency modulation

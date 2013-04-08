@@ -5,6 +5,11 @@ Random Dot Kinetogram Project - PSU, SLEIC, Gilmore Lab
 
 Author: Ken Hwang
 
+4/8/13
+
+Added a practice object under exp/practice/
+Added "beeps" for incorrect or no response conditions.
+
 2/19/13
 
 Re-coded (due to lost 2/12/13 changes):

@@ -155,6 +155,11 @@ switch varpick
         obj.dotStore = old_instance.(old_strval{1}).dotStore;
         obj.out = old_instance.(old_strval{1}).out;
         
+    case 'practice'
+        
+        rdkMain('oldload')
+        return;
+        
     otherwise
         
         error('RDK: Invalid option.')
@@ -248,8 +253,12 @@ for block_i = 1:obj.exp.block % For each block
                 end
                 if isempty(respchk) % Check if still empty
                     out{nextcell,size(obj.out,2)+3} = 0; % Miss if respchk is empty (no response)
+                    beep;
                 else
                     out{nextcell,size(obj.out,2)+3} = LRkey(nextcell,respchk); % Log LRkey entry
+                    if ~LRkey(nextcell,respchk)
+                        beep;
+                    end
                 end
             end
         end
