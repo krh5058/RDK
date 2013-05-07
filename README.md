@@ -5,6 +5,16 @@ Random Dot Kinetogram Project - PSU, SLEIC, Gilmore Lab
 
 Author: Ken Hwang
 
+5/7/13
+
+Installing svn repo (psychtoolbox) for mac 10.8
+You do not download subversion  from collabnet like in previous versions of OSX.
+
+-Download XCode 4 from mac app store.
+-Install XCode
+-Within Xcode, go to downloads > command line tools > install.
+-Execute DownloadPsychtoolbox.m
+
 4/18/13
 
 To reiterate, I found an issue with the "beep" command (a command native to Matlab that just makes a beeping noise when run) when trying to run RDK on the testing laptop (OSX 10.6.6).  I believe that the current version of Matlab (2010a Student Version) is having issues with running the beep command and presenting it at the appropriate time (@ incorrect responses).  Another symptom is that the beep seems to stall in queue, and occurs after the script has ended.  However, I have not been able to debug the nature of why this issue is occurring   Additionally, this function works fine on the iMac (Gilmorelab02) that is running OSX 10.6.8 and Matlab 2011b.  This leads me to believe that it is not an issue with the code, but rather software/hardware interfacing.
