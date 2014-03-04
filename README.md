@@ -5,6 +5,47 @@ Random Dot Kinetogram Project - PSU, SLEIC, Gilmore Lab
 
 Author: Ken Hwang
 
+5/7/13
+
+Installing svn repo (psychtoolbox) for mac 10.8
+You do not download subversion  from collabnet like in previous versions of OSX.
+
+-Download XCode 4 from mac app store.
+-Install XCode
+-Within Xcode, go to downloads > command line tools > install.
+-Execute DownloadPsychtoolbox.m
+
+4/18/13
+
+To reiterate, I found an issue with the "beep" command (a command native to Matlab that just makes a beeping noise when run) when trying to run RDK on the testing laptop (OSX 10.6.6).  I believe that the current version of Matlab (2010a Student Version) is having issues with running the beep command and presenting it at the appropriate time (@ incorrect responses).  Another symptom is that the beep seems to stall in queue, and occurs after the script has ended.  However, I have not been able to debug the nature of why this issue is occurring   Additionally, this function works fine on the iMac (Gilmorelab02) that is running OSX 10.6.8 and Matlab 2011b.  This leads me to believe that it is not an issue with the code, but rather software/hardware interfacing.
+
+There are a couple alternatives to pursue:
+1) I do not use the built-in Matlab "beep" command, but rather run an audio handle with PsychToolbox and try to play a .wav or .mp3 file instead.  This may or may not work depending on whether this solution will run into the same issue that the "beep" command has.  This will also use more resources during run time, but I am unsure to how much it will affect performance.  I will also need an appropriate .wav or .mp3 to use for feedback.
+
+2) Update Matlab from the 2010a student version to 2011b (7.13 Service Pack 2) that is compatible with the machine I originally developed RDK on.  This makes the most sense because inconsistencies between software versions usually causes the largest problems.  According to PsychToolbox:
+
+Operating systems: GNU Linux is recommended. Also works on Apple OSX (Intel) and MS-Windows (Intel).
+Runtime environment: Matlab Version 7.4 R2007a or later, also GNU Octave version 3.2 or later on Linux and 3.6 on OSX.
+
+This means that PsychToolbox is agnostic to either version of Matlab and OS.  Additionally, the system requirements for Matlab are as follows:
+
+2010a
+Mac OS X 10.6.x (Snow Leopard)
+
+2011b (7.13 Service Pack 2)
+Mac OS X 10.6.4 (Snow Leopard) and above with Apple Java for Mac OS X Update 2 and above. Mac OS X 10.7 (Lion).
+
+So, 2011b should run fine on the laptop (OS X 10.6.6).
+
+3) Migrate RDK development and implementation to the iMac (I've only heard of it but never worked with it) in 449 Moore.  This would remove an additional problem of finding an external monitor large enough for display.  However, I would still recommend updating that iMac to the same 2011b (7.13) as long as it is OS X 10.6.4 or above, or OS X 10.7.
+
+To summarize:
+The issue that is coming up on the laptop is slightly complicated and I do not have a clear description of why it is occurring.  I can try an alternative method of presenting audio feedback.  However, this still does not bridge the gap in software differences between the developing platform and the testing laptop.  It is very likely that the issue is due to software differences in Matlab because, the "beep" is a native Matlab command and the "beep" works fine on the iMac used for development.  We also can choose to either perform this update on the laptop which will need an external monitor or on another iMac in 449 that is large enough to be run on the main screen.
+
+Let me know what option you would like to pursue or if anything else needs to be taken into consideration.
+
+Ken
+
 4/8/13
 
 Added a practice object under exp/practice/
@@ -29,7 +70,7 @@ Re-coded (due to lost 2/12/13 changes):
 - Accounted for extra frames, adds required frames to exp.fr (lines 500-502), Needs testing
 - Removed all button press logging during single display.
 - Changed trial iterating into a while loop to accommodate for trial restarts.
-- Added ‘p’ for trial restart key.  If ‘p’ is pressed no logging takes place.
+- Added ï¿½pï¿½ for trial restart key.  If ï¿½pï¿½ is pressed no logging takes place.
 
 ToDo:
 - Running into some memory issues when issuing multiple runs during one matlab session
@@ -43,7 +84,7 @@ Added inter-annulus distance calculations within exp.mask, adjusts dot.field(1:2
 dot.field is 2x4 now.
 dot.field_area adjusted accordingly
 Fixed bug in lin2 function, changed length() to size().
-Randomization and cohort selection within ‘i’ iteration of DotGen.
+Randomization and cohort selection within ï¿½iï¿½ iteration of DotGen.
 
 2/13/13
 
@@ -69,7 +110,7 @@ Randomization and cohort selection within ‘i’ iteration of DotGen.
 - Accounted for extra frames, adds required frames to exp.fr (lines 500-502), Needs testing
 - Removed all button press logging during single display.
 - Changed trial iterating into a while loop to accommodate for trial restarts.
-- Added ‘p’ for trial restart key.  If ‘p’ is pressed no logging takes place.
+- Added ï¿½pï¿½ for trial restart key.  If ï¿½pï¿½ is pressed no logging takes place.
 
 ToDo:
 - Running into some memory issues when issuing multiple runs during one matlab session
@@ -116,12 +157,12 @@ Old RDK accounts for 1.2 Hz global frequency.
 
 Time/date verification seems okay.
 Documented ObjSet.m and rdkMain.m.
-Rearranged contents of while loop in rdkMain.m for processing purposes, but it seems like the delay in press is primarily due to the while loopÕs interaction with the timer object.  This may be unavoidable and a firm, prolonged press until black screen may be necessary for advancement of trial.
+Rearranged contents of while loop in rdkMain.m for processing purposes, but it seems like the delay in press is primarily due to the while loopï¿½s interaction with the timer object.  This may be unavoidable and a firm, prolonged press until black screen may be necessary for advancement of trial.
 
 1/16/13
 
 Verify time checking.
-Fixed typo line 26 (rdkMain.m): ÔdateÕ > ÔtimeÕ
+Fixed typo line 26 (rdkMain.m): ï¿½dateï¿½ > ï¿½timeï¿½
 Keys changed to Z and /?.
 Expect 2nd testing keyboard.
 
@@ -140,7 +181,7 @@ Separate query function (Ask prior to run if want to log): Birthdate (convert to
 -Added user input for testdate and testtime for cases prepare and newrun.  Also added error displays for when these values are input incorrectly.
 -Added headers to out.csv.
 -Allowed for escape during start_fcn.
--Added begin_fcn which executes pres.txt_size_fcn and pres.txt_fcn.  Also, added pres.txt_val property.  Ôbegin_fcnÕ method is used to display text on an introductory screen (separate from testing) using the txt* function handles.  The txt* function handles set up DrawText parameters and draws introductory text to screen.  To be used prior to presentation execution.
+-Added begin_fcn which executes pres.txt_size_fcn and pres.txt_fcn.  Also, added pres.txt_val property.  ï¿½begin_fcnï¿½ method is used to display text on an introductory screen (separate from testing) using the txt* function handles.  The txt* function handles set up DrawText parameters and draws introductory text to screen.  To be used prior to presentation execution.
 -Modified script due to performance issues when pressing button responses.  Now, program appropriately advances screen draw upon key press.
 
 ToDo:
@@ -186,15 +227,15 @@ Allow for escape during start_fcn.
 1/3/13
 
 -Working on wrapper script: rdkMain
-	- ÔprepareÕ: AllowÕs for multiple batchDot runs.  Must specify number of iterations.  No presentation will occur
-	- ÔnewrunÕ: Perform batchDot and begin trial run.
-	- ÔoldloadÕ: Run a pre-existing set of dots.  New object definition is required and property specification.  Must pick from file directory.
+	- ï¿½prepareï¿½: Allowï¿½s for multiple batchDot runs.  Must specify number of iterations.  No presentation will occur
+	- ï¿½newrunï¿½: Perform batchDot and begin trial run.
+	- ï¿½oldloadï¿½: Run a pre-existing set of dots.  New object definition is required and property specification.  Must pick from file directory.
 - Space key has been restricted for start_fcn.
 - Esc key, Left Arrow key, and Right Arrow key have been restricted for timer function.
 - Fixed a bug where block and trial indexing from dotStore was reversed.
-- Move timer object generation as itÕs own method -- tGen.  Can be used to create timer object property in obj at any point, so that window pointer can vary and not produce errors in old timer object callback functions.
+- Move timer object generation as itï¿½s own method -- tGen.  Can be used to create timer object property in obj at any point, so that window pointer can vary and not produce errors in old timer object callback functions.
 - Fixed escaping.  Does not use error(), but rather an esc_flag to exit both sets of for loops (block + trial).
--Óout.csvÓ now goes to the appropriate exp directory.
+-ï¿½out.csvï¿½ now goes to the appropriate exp directory.
 
 ToDo:
 -Noticed an issue with delayed keyboard response at times.  Should not be a large issue, but will look into it.
@@ -289,7 +330,7 @@ Need new methods for:
 
 11/27/12
 
-Added bounds check, masking, and output ÔdotoutÕ to DotGen.
+Added bounds check, masking, and output ï¿½dotoutï¿½ to DotGen.
 Fixed exp.dot.n to equal # of dots in dot field.exp.dot.n_masked is # of dots after mask.
 
 11-15-12
@@ -297,7 +338,7 @@ Fixed exp.dot.n to equal # of dots in dot field.exp.dot.n_masked is # of dots af
 ToDo:
 DotGen.m
 - Bounds Check and Dot Recycle
-- Apply Mask (CanÕt sparse with singles -- will use NaN)
+- Apply Mask (Canï¿½t sparse with singles -- will use NaN)
 - Save Final Array (3-d array) -- each frame will contain a 2 column array -- 2560x2x600
 - Fix fixation draw -- coordinates
 - Add direction reversals
@@ -310,7 +351,7 @@ Need new methods for:
 - Use Client to generate dots or worker?
 	- How to access new created dots?
 
-- New method: DotGen.  Output is dot.  It first creates a randomized dot vector, then it randomly draws a pattern type.  If the pattern typeÕs count has exceeded the count limit, then it will redraw until it finds another.  DotGet has a set of for loops to generate dot motion for each stereo display, at each frame, and for each pattern.  After parsing a dot index based on coherence value, it evaluates coherent dots then incoherent.  For each set, it will run through the list of function handles outlined in ExpSet.  For each function, an argument list is generated and by using exp.nomen, converts the shorthand argument list into actual variable calls.  The expected function output, function handle, and argument list are fed into eval() for every function call.  Afterwards, cohdot and incohdot matrices are combined and rewrites the ÔdotÕ variable.
+- New method: DotGen.  Output is dot.  It first creates a randomized dot vector, then it randomly draws a pattern type.  If the pattern typeï¿½s count has exceeded the count limit, then it will redraw until it finds another.  DotGet has a set of for loops to generate dot motion for each stereo display, at each frame, and for each pattern.  After parsing a dot index based on coherence value, it evaluates coherent dots then incoherent.  For each set, it will run through the list of function handles outlined in ExpSet.  For each function, an argument list is generated and by using exp.nomen, converts the shorthand argument list into actual variable calls.  The expected function output, function handle, and argument list are fed into eval() for every function call.  Afterwards, cohdot and incohdot matrices are combined and rewrites the ï¿½dotï¿½ variable.
 - Removed dot.init.  Relocated randomized initial dot vector to DotGen
 - Organized experimental coherence conditions to separate pattern structures.
 - Added exp.nomen to convert string values of function handles into variable string calls
@@ -324,7 +365,7 @@ Need new methods for:
 - Added function handles for linear, radial, and random.
 	- Tested all function handles
 - Added initial dot array, converted to single = 13104 bytes
-	- Need to double-check.  It seems that ÔDrawDotsÕ does not accept single class values.
+	- Need to double-check.  It seems that ï¿½DrawDotsï¿½ does not accept single class values.
 - According to Mathworks, the largest workspace for a 32-bit MatLab is ~3GB.  However, we are running 64-bit OSX with 64-bit MatLab (8 GB RAM).  According to these calculations:
 - 3 GB / 13104 Bytes = 2.4582*10^5 dot arrays
 - 2.4582*10^5 / (60 Hz * 10s) = 409.7 entire 10 second run
@@ -345,7 +386,7 @@ ToDo:
 Update old rdk or modify dmdt?
 
 Update rdk: 
-	- CanÕt run multiple motion types in single block
+	- Canï¿½t run multiple motion types in single block
 	- No break screens implemented
 	- Front-end undeveloped
 
