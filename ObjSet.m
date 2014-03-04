@@ -548,33 +548,33 @@ classdef ObjSet < handle
             end
             
             % Mask Constraint Parameters
-            exp.mask.annulus_deg = [1 3.5]; % Annulus radius minimum and maximum (deg)
+            exp.mask.annulus_deg = [1.5 5.5]; % Annulus radius minimum and maximum (deg)
             exp.mask.annulus_buffer_deg = 1; % Buffer radius to be recycled
             exp.mask.annulus_pix = exp.mask.annulus_deg * sys.display.ppd; % Annulus radius minimum and maximum (pix)
             exp.mask.adj_flag = 0;
-            if sys.display.dual
-                exp.mask.extra_w = (sys.display.rect(3) - exp.mask.annulus_pix(2)*2)/2; % Amount of width left on one side of annulus, (Also default distance from center).
-                exp.mask.interannulus_deg = (exp.mask.extra_w*2)/sys.display.ppd; % Degrees distance between annuluses outer radii
-                if exp.mask.interannulus_deg < 5
-                    fprintf('RDK: Warning! Inter-annulus degree is less than 5 (%2.4f).\n', exp.mask.interannulus_deg)
-                    exp.mask.offset_deg = 5 - exp.mask.interannulus_deg;
-                    exp.mask.offset_pix = exp.mask.offset_deg*sys.display.ppd;
-                    exp.mask.extra_w_with_offset = (sys.display.center(1) - exp.mask.annulus_pix(2)) - exp.mask.offset_pix;
-                    if exp.mask.extra_w_with_offset < 0
-                        fprintf('RDK: Warning! Unable to adjust inter-annulus degree to greater than 5.  \nPixel offset is greater than available pixel width space (%4.4f > %4.4f).\n',exp.mask.offset_pix, (sys.display.center(1) - exp.mask.annulus_pix(2)))
-                        fprintf('RDK: Consider reducing outer annulus radius (Currently, %2.1f degrees).\n', exp.mask.annulus_deg(2));
-                    else
-                        fprintf('RDK: Adjusted inter-annulus degree to 5.  This will increase the distance between the left and right annuluses.\n');
-                        exp.mask.adj_flag = 1;
-                    end
-                elseif exp.mask.interannulus_deg > 10
-                    fprintf('RDK: Warning! Inter-annulus degree is greater than 10 (%2.4f).\n', exp.mask.interannulus_deg)
-                    exp.mask.offset_deg = exp.mask.interannulus_deg - 10;
-                    exp.mask.offset_pix = exp.mask.offset_deg*sys.display.ppd;
-                    fprintf('RDK: Adjusted inter-annulus degree to 10.  This will decrease the distance between the left and right annuluses.\n');
-                    exp.mask.adj_flag = -1;
-                end
-            end
+%             if sys.display.dual
+%                 exp.mask.extra_w = (sys.display.rect(3) - exp.mask.annulus_pix(2)*2)/2; % Amount of width left on one side of annulus, (Also default distance from center).
+%                 exp.mask.interannulus_deg = (exp.mask.extra_w*2)/sys.display.ppd; % Degrees distance between annuluses outer radii
+%                 if exp.mask.interannulus_deg < 5
+%                     fprintf('RDK: Warning! Inter-annulus degree is less than 5 (%2.4f).\n', exp.mask.interannulus_deg)
+%                     exp.mask.offset_deg = 5 - exp.mask.interannulus_deg;
+%                     exp.mask.offset_pix = exp.mask.offset_deg*sys.display.ppd;
+%                     exp.mask.extra_w_with_offset = (sys.display.center(1) - exp.mask.annulus_pix(2)) - exp.mask.offset_pix;
+%                     if exp.mask.extra_w_with_offset < 0
+%                         fprintf('RDK: Warning! Unable to adjust inter-annulus degree to greater than 5.  \nPixel offset is greater than available pixel width space (%4.4f > %4.4f).\n',exp.mask.offset_pix, (sys.display.center(1) - exp.mask.annulus_pix(2)))
+%                         fprintf('RDK: Consider reducing outer annulus radius (Currently, %2.1f degrees).\n', exp.mask.annulus_deg(2));
+%                     else
+%                         fprintf('RDK: Adjusted inter-annulus degree to 5.  This will increase the distance between the left and right annuluses.\n');
+%                         exp.mask.adj_flag = 1;
+%                     end
+%                 elseif exp.mask.interannulus_deg > 10
+%                     fprintf('RDK: Warning! Inter-annulus degree is greater than 10 (%2.4f).\n', exp.mask.interannulus_deg)
+%                     exp.mask.offset_deg = exp.mask.interannulus_deg - 10;
+%                     exp.mask.offset_pix = exp.mask.offset_deg*sys.display.ppd;
+%                     fprintf('RDK: Adjusted inter-annulus degree to 10.  This will decrease the distance between the left and right annuluses.\n');
+%                     exp.mask.adj_flag = -1;
+%                 end
+%             end
             exp.mask.annulus_buffer_pix = exp.mask.annulus_buffer_deg * sys.display.ppd; % Buffer radius (pix)
             outerA = pi*exp.mask.annulus_pix(2)^2;
             innerA = pi*exp.mask.annulus_pix(1)^2;

@@ -190,13 +190,16 @@ else
 end
 
 % Starting window set-up
-Screen('Preference','SkipSyncTests',2);
+% oldVisualDebugLevel = Screen('Preference','VisualDebugLevel',1);
+% Screen('Preference','SkipSyncTests',1);
 obj.sys.display.temp_w = obj.pres.open(obj.sys.display.screenNumber,obj.sys.display.black,0); % Open Window
 RestrictKeysForKbCheck(spkey);
 obj.begin_fcn; % Display starting text
 
 % Screen and timer set-up
-Screen('Preference','SkipSyncTests',0);
+% Screen('Preference','SkipSyncTests',0);
+oldVisualDebugLevel = Screen('Preference','VisualDebugLevel',1);
+Screen('Preference','SkipSyncTests',1);
 obj.sys.display.w = obj.pres.open(obj.sys.display.screenNumber,obj.sys.display.black,obj.sys.display.stereo); % Open Window
 obj.tGen;
 
@@ -283,6 +286,7 @@ end
 cell2csv([obj.exp.objpath filesep 'out.csv'],[out_h; out]); % Write output
 
 % Clean-up
+Screen('Preference','VisualDebugLevel',oldVisualDebugLevel);
 Screen('CloseAll');
 ListenChar(0);
 ShowCursor;
